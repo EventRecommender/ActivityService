@@ -1,5 +1,7 @@
 using ActivityService.Classes;
 using System.Text.Json;
+using MySql.Data.MySqlClient;
+
 
 var builder = WebApplication.CreateBuilder(args);
 Database db = new Database();
@@ -7,6 +9,16 @@ Database db = new Database();
 // Add services to the container.
 
 var app = builder.Build();
+
+app.MapGet("/", () => {
+    //TEST
+    string cs = @"server=mysql;userid=root;password=super;database=test";
+
+    using var con = new MySqlConnection(cs);
+    con.Open();
+
+    return con;
+});
 
 // Configure the HTTP request pipeline.
 
@@ -19,7 +31,7 @@ app.MapGet("/AddActivity", (string title, string host, string location, string d
 });
 
 //Retrieves all activities from a given area within a time period.
-app.MapGet("/GetActivities/{function}", (string function, string area, List<int> listOfActivityID, int monthsForward) => 
+app.MapGet("/GetActivities", (string function, string area, int monthsForward) => 
 {
     try
     {
@@ -28,15 +40,16 @@ app.MapGet("/GetActivities/{function}", (string function, string area, List<int>
             List<Activity> activityList = db.GetActivities(area);
             string json = JsonSerializer.Serialize(activityList);
 
-            return json;
+            return Results.Accepted(json);
         }
         else if (function == "areaTime")
         {
             List<Activity> activityList = db.GetActivities(area, monthsForward);
             string json = JsonSerializer.Serialize(activityList);
 
-            return json;
+            return Results.Accepted(json);
         }
+        /*
         else if (function == "activity")
         {
             List<Activity> activityList = db.GetActivities(listOfActivityID);
@@ -44,24 +57,32 @@ app.MapGet("/GetActivities/{function}", (string function, string area, List<int>
 
             return json;
         }
+        */
         throw new Exception("No valid functionality given!");
     }
     catch (Exception e)
     {
         string err = $"[ACTIVITY DATABASE] Something went wrong when trying to get activities! \n{e.Message}";
-        Console.WriteLine(err);
-        //return Results.Problem(err, null, 500);
-        return err;
+        return Results.Problem(err);
     }
 });
 
 //Retrieves all activities containing tags based on given interests.
-app.MapGet("/GetActivitiesByPreference", (List<string> listOfPreferences) => 
+app.MapGet("/GetActivitiesByPreference", (string jsonParam) => 
 {
-    List<Activity> activityList = db.GetActivitiesByPreference(listOfPreferences);
-    string json = JsonSerializer.Serialize(activityList);
+    try
+    {
+        List<string> listOfPreferences = JsonSerializer.Deserialize<List<string>>(jsonParam);
+        List<Activity> activityList = db.GetActivitiesByPreference(listOfPreferences);
+        string json = JsonSerializer.Serialize(activityList);
 
-    return json;
+        return Results.Accepted(json);
+    } 
+    catch
+    {
+        return Results.BadRequest("Something went wrong");
+    }
+    
 });
 
 //Retrieves all activities organized by the given user.
@@ -80,11 +101,19 @@ app.MapGet("/UpdateActivities", () =>
 });
 
 //Removes the given activity from the activity database
-app.MapGet("/RemoveActivities", (List<int> listOfActivityID) =>
+app.MapGet("/RemoveActivities", (string json) =>
 {
-    db.RemoveActivities(listOfActivityID);
-
-    return "Activities removed!";
+    try
+    {
+        List<int> listOfActivityID = JsonSerializer.Deserialize<List<int>>(json);
+        db.RemoveActivities(listOfActivityID);
+        return Results.Accepted("Activity deleted");
+    }
+    catch
+    {
+        return Results.BadRequest("Something went wrong");
+    }
+    
 });
 
 app.Run();

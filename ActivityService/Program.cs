@@ -10,16 +10,6 @@ Database db = new Database();
 
 var app = builder.Build();
 
-app.MapGet("/", () => {
-    //TEST
-    string cs = @"server=mysql;userid=root;password=super;database=test";
-
-    using var con = new MySqlConnection(cs);
-    con.Open();
-
-    return con;
-});
-
 // Configure the HTTP request pipeline.
 
 //Adds an activity to the database

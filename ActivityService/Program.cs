@@ -21,33 +21,31 @@ app.MapGet("/AddActivity", (string title, string host, string location, string d
 });
 
 //Retrieves all activities from a given area within a time period.
-app.MapGet("/GetActivities", (string function, string area, int monthsForward) => 
+app.MapGet("/GetActivities", (string function, string area, int monthsForward, string jsonActivityList) => 
 {
+    List<Activity> activityList;
+    string json;
     try
     {
-        if (function == "area")
+        switch (function)
         {
-            List<Activity> activityList = db.GetActivities(area);
-            string json = JsonSerializer.Serialize(activityList);
+            case "area":
+                activityList = db.GetActivities(area);
+                json = JsonSerializer.Serialize(activityList);
 
-            return Results.Accepted(json);
-        }
-        else if (function == "areaTime")
-        {
-            List<Activity> activityList = db.GetActivities(area, monthsForward);
-            string json = JsonSerializer.Serialize(activityList);
+                return Results.Accepted(json);
+            case "areaTime":
+                activityList = db.GetActivities(area, monthsForward);
+                json = JsonSerializer.Serialize(activityList);
 
-            return Results.Accepted(json);
-        }
-        /*
-        else if (function == "activity")
-        {
-            List<Activity> activityList = db.GetActivities(listOfActivityID);
-            string json = JsonSerializer.Serialize(activityList);
+                return Results.Accepted(json);
+            case "activity":
+                List<int> listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
+                activityList = db.GetActivities(listOfActivityID);
+                json = JsonSerializer.Serialize(activityList);
 
-            return json;
+                return Results.Accepted(json);
         }
-        */
         throw new Exception("No valid functionality given!");
     }
     catch (Exception e)
@@ -58,11 +56,11 @@ app.MapGet("/GetActivities", (string function, string area, int monthsForward) =
 });
 
 //Retrieves all activities containing tags based on given interests.
-app.MapGet("/GetActivitiesByPreference", (string jsonParam) => 
+app.MapGet("/GetActivitiesByPreference", (string jsonPreferenceList) => 
 {
     try
     {
-        List<string> listOfPreferences = JsonSerializer.Deserialize<List<string>>(jsonParam);
+        List<string> listOfPreferences = JsonSerializer.Deserialize<List<string>>(jsonPreferenceList);
         List<Activity> activityList = db.GetActivitiesByPreference(listOfPreferences);
         string json = JsonSerializer.Serialize(activityList);
 
@@ -91,11 +89,11 @@ app.MapGet("/UpdateActivities", () =>
 });
 
 //Removes the given activity from the activity database
-app.MapGet("/RemoveActivities", (string json) =>
+app.MapGet("/RemoveActivities", (string jsonActivityList) =>
 {
     try
     {
-        List<int> listOfActivityID = JsonSerializer.Deserialize<List<int>>(json);
+        List<int> listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
         db.RemoveActivities(listOfActivityID);
         return Results.Accepted("Activity deleted");
     }

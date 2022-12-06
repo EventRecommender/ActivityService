@@ -99,13 +99,13 @@ namespace ActivityService.Classes
         //Retrieves specific activities by given ID's
         public List<Activity> GetActivities(List<int> listOfActivityID)
         {
-            string query = $"SELECT * FROM activity WHERE id = {listOfActivityID.First()}";
+            string query = $"SELECT * FROM activity WHERE id IN ('{listOfActivityID.First()}'";
 
             var sb = new System.Text.StringBuilder();
             foreach (int x in listOfActivityID){
-                sb.AppendLine($" OR id = {x}");
+                sb.AppendLine($", '{x}'");
             }
-            query += sb + ";";
+            query += sb + ");";
 
             using var con = new MySqlConnection(connectionString);
             con.Open();
@@ -140,13 +140,13 @@ namespace ActivityService.Classes
             using var con = new MySqlConnection(connectionString);
             con.Open();
 
-            var query = $"SELECT activityid FROM type WHERE tag = {listOfPreferences.First()}";
+            var query = $"SELECT activityid FROM type WHERE tag IN ('{listOfPreferences.First()}'";
             var sb = new System.Text.StringBuilder();
             foreach (string x in listOfPreferences.Skip(1))
             {
-                sb.AppendLine($" OR tag = {x}");
+                sb.AppendLine($", {x}");
             }
-            query += sb + ";";
+            query += sb + ");";
 
             using var cmd = new MySqlCommand(query, con);
             using MySqlDataReader tagrdr = cmd.ExecuteReader();
@@ -190,14 +190,14 @@ namespace ActivityService.Classes
         //Removes activities from the database. Requires proper role
         public void RemoveActivities(List<int> listOfActivityID) 
         {
-            var query = $"DELETE FROM activitydb WHERE id = {listOfActivityID.First()}";
+            var query = $"DELETE FROM activitydb WHERE id IN ('{listOfActivityID.First()}'";
 
             var sb = new System.Text.StringBuilder();
             foreach (int x in listOfActivityID.Skip(1))
             {
-                sb.AppendLine($" OR id = {x}");
+                sb.AppendLine($", '{x}'");
             }
-            query += sb + ";";
+            query += sb + ");";
 
             using var con = new MySqlConnection(connectionString);
             con.Open();

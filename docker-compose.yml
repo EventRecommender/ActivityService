@@ -2,13 +2,13 @@ version: '3'
 services:
   activity-service: 
     build: ./ActivityService
-    container_name: activiry-service
+    container_name: activity-service
     ports:
       - 80:80
 
   mysql:
     image: mysql
-    container_name: mysql
+    container_name: activity_database
     ports:
       - 3306:3306
     environment:

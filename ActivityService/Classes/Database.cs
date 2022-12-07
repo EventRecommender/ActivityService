@@ -12,7 +12,7 @@ namespace ActivityService.Classes
 
         }
 
-        string connectionString = @"server=mysql;userid=root;password=super;database=activity_db";
+        string connectionString = @"server=activity_database;userid=root;password=super;database=activity_db";
 
         //Adds an activity to the database
    

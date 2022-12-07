@@ -1,0 +1,19 @@
+version: '3'
+services:
+  activity-service: 
+    build: ./ActivityService
+    container_name: activiry-service
+    ports:
+      - 80:80
+
+  mysql:
+    image: mysql
+    container_name: mysql
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: super
+      MYSQL_DATABASE: activity_db
+    volumes:
+      - ./mysql_db_data:/var/lib/mysql
+      - ./entry:/docker-entrypoint-initdb.d/ 

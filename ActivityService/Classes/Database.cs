@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Reflection.PortableExecutable;
 using MySql.Data.MySqlClient;
+using System.Net.Http.Headers;
 
 namespace ActivityService.Classes
 {
@@ -17,47 +19,73 @@ namespace ActivityService.Classes
         public void AddActivity(Activity activity)
         {
             string query = $"INSERT INTO activity (title, host, place, time, img, path, description, active) VALUES " +
-                $"({activity.title}, {activity.host}, {activity.location}, {activity.date}, {activity.imageurl}, {activity.url}, {activity.description}, {activity.active});";
+                    $"({activity.title}, {activity.host}, {activity.location}, {activity.date}, {activity.imageurl}, {activity.url}, {activity.description}, {activity.active});";
             using MySqlConnection con = new MySqlConnection(connectionString);
             MySqlCommand command = new MySqlCommand(query, con);
-            con.Open();
-            MySqlDataReader reader = command.ExecuteReader();
-            reader.Close();
-            command.Dispose();
-            con.Close();
+
+            try
+            {
+                con.Open();
+                MySqlDataReader reader = command.ExecuteReader();
+                reader.Close();
+                command.Dispose();
+                con.Close();
+            }
+            catch (InvalidOperationException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/AddActivity] InvalidOperationException. Failed to add activity to database: \n" + e.Message);
+                throw;
+            }
+            catch (MySqlException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/AddActivity] MySqlException. Failed to add activity to database: \n" + e.Message);
+                throw;
+            }
         }
         
         //Retrieves all activities hosted in a specific city
         public List<Activity> GetActivities(string city)
         {
-            using var con = new MySqlConnection(connectionString);
-            con.Open();
-
             var query = $"SELECT * FROM activity WHERE place='{city}';";
-
-            using var cmd = new MySqlCommand(query, con);
-            using MySqlDataReader rdr = cmd.ExecuteReader();
-
             List<Activity> activities = new List<Activity>();
-            while (rdr.Read())
+
+            using var con = new MySqlConnection(connectionString);
+            using var command = new MySqlCommand(query, con);
+
+            try
             {
-                activities.Add(new Activity(rdr.GetInt32(0), rdr.GetString(1),
-                                    rdr.GetString(2), rdr.GetString(3), rdr.GetString(4), rdr.GetString(5), rdr.GetString(6), rdr.GetString(7), rdr.GetBoolean(8)));
+                con.Open();
+                using MySqlDataReader reader = command.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                }
+
+                reader.Close();
+                command.Dispose();
+                con.Close();
+                return activities;
             }
-
-            con.Close();
-            return activities;
-
-            /*string query = $"SELECT * FROM activity WHERE location='{city}';";
-            SqlConnection con = new SqlConnection(URL);
-            SqlCommand command = new SqlCommand(query, con);
-            con.Open();
-            SqlDataReader reader = command.ExecuteReader();
-            reader.Close();
-            command.Dispose();
-            con.Close();
-            */
-
+            catch (InvalidOperationException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/GetActivities] InvalidOperationException. Failed to get activities: \n" + e.Message);
+                throw;
+            }
+            catch (MySqlException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/GetActivities] MySqlException. Failed to get activities: \n" + e.Message);
+                throw;
+            }
         }
 
         //Retrieves all activities hosted in a specific city within a given time period
@@ -65,35 +93,42 @@ namespace ActivityService.Classes
         {
             DateTime currentDate = DateTime.Now;
             DateTime specifiedDate = DateTime.Now.AddMonths(monthsForward);
+            var query = $"SELECT * FROM activity WHERE place='{city}' AND time BETWEEN {currentDate} AND {specifiedDate};";
+            List<Activity> activities = new List<Activity>();
 
             using var con = new MySqlConnection(connectionString);
-            con.Open();
+            using var command = new MySqlCommand(query, con);
 
-            var query = $"SELECT * FROM activity WHERE place='{city}' AND time BETWEEN {currentDate} AND {specifiedDate};";
-
-            using var cmd = new MySqlCommand(query, con);
-            using MySqlDataReader rdr = cmd.ExecuteReader();
-
-            List<Activity> activities = new List<Activity>();
-            while (rdr.Read())
+            try
             {
-                activities.Add(new Activity(rdr.GetInt32(0), rdr.GetString(1),
-                                    rdr.GetString(2), rdr.GetString(3), rdr.GetString(4), rdr.GetString(5), rdr.GetString(6), rdr.GetString(7), rdr.GetBoolean(8)));
+                con.Open();
+                using MySqlDataReader reader = command.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                }
+
+                reader.Close();
+                command.Dispose();
+                con.Close();
+                return activities;
             }
-
-            con.Close();
-            return activities;
-
-            /*
-            string query = $"SELECT * FROM activity WHERE location='{city}' AND date BETWEEN {currentDate} AND {specifiedDate};";
-            SqlConnection con = new SqlConnection(URL);
-            SqlCommand command = new SqlCommand(query, con);
-            con.Open();
-            SqlDataReader reader = command.ExecuteReader();
-            reader.Close();
-            command.Dispose();
-            con.Close();
-            */
+            catch (InvalidOperationException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/GetActivities] InvalidOperationException. Failed to get activities: \n" + e.Message);
+                throw;
+            }
+            catch (MySqlException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/GetActivities] MySqlException. Failed to get activities: \n" + e.Message);
+                throw;
+            }
         }
 
         //Retrieves specific activities by given ID's
@@ -102,44 +137,50 @@ namespace ActivityService.Classes
             string query = $"SELECT * FROM activity WHERE id IN ('{listOfActivityID.First()}'";
 
             var sb = new System.Text.StringBuilder();
-            foreach (int x in listOfActivityID){
+            foreach (int x in listOfActivityID.Skip(1)){
                 sb.AppendLine($", '{x}'");
             }
             query += sb + ");";
 
             using var con = new MySqlConnection(connectionString);
-            con.Open();
+            using var command = new MySqlCommand(query, con);
 
-            using var cmd = new MySqlCommand(query, con);
-            using MySqlDataReader rdr = cmd.ExecuteReader();
-
-            List<Activity> activities = new List<Activity>();
-            while (rdr.Read())
+            try
             {
-                activities.Add(new Activity(rdr.GetInt32(0), rdr.GetString(1),
-                                    rdr.GetString(2), rdr.GetString(3), rdr.GetString(4), rdr.GetString(5), rdr.GetString(6), rdr.GetString(7), rdr.GetBoolean(8)));
+                con.Open();
+                using MySqlDataReader reader = command.ExecuteReader();
+
+                List<Activity> activities = new List<Activity>();
+                while (reader.Read())
+                {
+                    activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                }
+
+                reader.Close();
+                command.Dispose();
+                con.Close();
+                return activities;
             }
-
-            con.Close();
-            return activities;
-
-            /*
-            SqlConnection con = new SqlConnection(URL);
-            SqlCommand command = new SqlCommand(query, con);
-            con.Open();
-            SqlDataReader reader = command.ExecuteReader();
-            reader.Close();
-            command.Dispose();
-            con.Close();
-            */
+            catch (InvalidOperationException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/GetActivities] InvalidOperationException. Failed to get activities: \n" + e.Message);
+                throw;
+            }
+            catch (MySqlException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/GetActivities] MySqlException. Failed to get activities: \n" + e.Message);
+                throw;
+            }
         }
 
         //Retrieves activities containing specific tags
         public List<Activity> GetActivitiesByPreference(List<string> listOfPreferences)
         {
-            using var con = new MySqlConnection(connectionString);
-            con.Open();
-
             var query = $"SELECT activityid FROM type WHERE tag IN ('{listOfPreferences.First()}'";
             var sb = new System.Text.StringBuilder();
             foreach (string x in listOfPreferences.Skip(1))
@@ -148,43 +189,89 @@ namespace ActivityService.Classes
             }
             query += sb + ");";
 
-            using var cmd = new MySqlCommand(query, con);
-            using MySqlDataReader tagrdr = cmd.ExecuteReader();
+            using var con = new MySqlConnection(connectionString);
+            using var command = new MySqlCommand(query, con);
 
-            List<int> activityList = new List<int>();
-            while (tagrdr.Read())
+            try
             {
-                activityList.Add(tagrdr.GetInt32(0));
-            }
+                con.Open();
 
-            con.Close();
-            return GetActivities(activityList);
+                using MySqlDataReader reader = command.ExecuteReader();
+
+                List<int> activityList = new List<int>();
+                while (reader.Read())
+                {
+                    activityList.Add(reader.GetInt32(0));
+                }
+
+                reader.Close();
+                command.Dispose();
+                con.Close();
+                return GetActivities(activityList);
+            }
+            catch (InvalidOperationException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/GetActivitiesByPreference] InvalidOperationException. Failed to get activities: \n" + e.Message);
+                throw;
+            }
+            catch (MySqlException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/GetActivitiesByPreference] MySqlException. Failed to get activities: \n" + e.Message);
+                throw;
+            }
         }
 
         //Retrieves all activities created by a specific organization
         public List<Activity> GetUserActivities(int organizerId)
         {
-            using var con = new MySqlConnection(connectionString);
-            con.Open();
-
             var query = $"SELECT activityid FROM type WHERE host = {organizerId}";
-
-            using var cmd = new MySqlCommand(query, con);
-            using MySqlDataReader rdr = cmd.ExecuteReader();
-
             List<Activity> activities = new List<Activity>();
-            while (rdr.Read())
+
+            using var con = new MySqlConnection(connectionString);
+            using var command = new MySqlCommand(query, con);
+
+            try
             {
-                activities.Add(new Activity(rdr.GetInt32(0), rdr.GetString(1),
-                rdr.GetString(2), rdr.GetString(3), rdr.GetString(4), rdr.GetString(5), rdr.GetString(6), rdr.GetString(7), rdr.GetBoolean(8)));
+                con.Open();
+
+                using MySqlDataReader reader = command.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                                            reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                }
+
+                reader.Close();
+                command.Dispose();
+                con.Close();
+                return activities;
             }
-            con.Close();
-            return activities;
+            catch (InvalidOperationException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/GetUserActivities] InvalidOperationException. Failed to get activities: \n" + e.Message);
+                throw;
+            }
+            catch (MySqlException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/GetUserActivities] MySqlException. Failed to get activities: \n" + e.Message);
+                throw;
+            }
         }
 
-        //tarts retrieval of new activities, using API calls
-        public void UpdateActivities()
+        //Starts retrieval of new activities, using API calls
+        public async void UpdateActivities()
         {
+            using HttpClient client = new();
+            var json = await client.GetStringAsync("/Scrape"); //Sæt det rigtige endpoint ind til scraperen
         }
 
         //Removes activities from the database. Requires proper role
@@ -200,11 +287,32 @@ namespace ActivityService.Classes
             query += sb + ");";
 
             using var con = new MySqlConnection(connectionString);
-            con.Open();
+            using var command = new MySqlCommand(query, con);
 
-            using var cmd = new MySqlCommand(query, con);
-            using MySqlDataReader rdr = cmd.ExecuteReader();
-            con.Close();
+            try
+            {
+                con.Open();
+
+                using MySqlDataReader reader = command.ExecuteReader();
+
+                reader.Close();
+                command.Dispose();
+                con.Close();
+            }
+            catch (InvalidOperationException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/RemoveActivities] InvalidOperationException. Failed to remove activities: \n" + e.Message);
+                throw;
+            }
+            catch (MySqlException e)
+            {
+                command.Dispose();
+                con.Close();
+                Console.Write("[DATABASE][/RemoveActivities] MySqlException. Failed to remove activities: \n" + e.Message);
+                throw;
+            }
         }
     }
 }

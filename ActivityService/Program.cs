@@ -13,11 +13,18 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 
 //Adds an activity to the database
-app.MapGet("/AddActivity", (string title, string host, string location, string date, string imageurl, string url, string description) =>
+app.MapPost("/AddActivity", (string title, string host, string location, string date, string imageurl, string url, string description) =>
 {
     Activity act = new Activity(1, title, host, location, date, imageurl, url, description, true);
-    db.AddActivity(act);
-    return "Ja det fint";
+    try
+    {
+        db.AddActivity(act);
+        return Results.Accepted();
+    }
+    catch (Exception e)
+    {
+        return Results.BadRequest(e.Message);
+    }
 });
 
 //Retrieves all activities from a given area within a time period.
@@ -40,17 +47,37 @@ app.MapGet("/GetActivities", (string function, string area, int monthsForward, s
 
                 return Results.Accepted(json);
             case "activity":
-                List<int> listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
-                activityList = db.GetActivities(listOfActivityID);
-                json = JsonSerializer.Serialize(activityList);
+                if (jsonActivityList != null)
+                {
+                    var listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
+                    activityList = db.GetActivities(listOfActivityID);
+                    json = JsonSerializer.Serialize(activityList);
 
-                return Results.Accepted(json);
+                    return Results.Accepted(json);
+                }
+                else
+                    throw new ArgumentNullException();
         }
         throw new Exception("No valid functionality given!");
     }
+    catch (ArgumentNullException e)
+    {
+        string err = $"[ACTIVITY DATABASE][/GetActivities] ArgumentNullException. Activity list must not be null! \n{e.Message}";
+        return Results.Problem(err);
+    }
+    catch (JsonException e)
+    {
+        string err = $"[ACTIVITY DATABASE][/GetActivities] JsonException. Invalid Json string! \n{e.Message}";
+        return Results.Problem(err);
+    }
+    catch (NotSupportedException e)
+    {
+        string err = $"[ACTIVITY DATABASE][/GetActivities] NotSupportedException. No implementation exists for the invoked method or property! \n{e.Message}";
+        return Results.Problem(err);
+    }
     catch (Exception e)
     {
-        string err = $"[ACTIVITY DATABASE] Something went wrong when trying to get activities! \n{e.Message}";
+        string err = $"[ACTIVITY DATABASE][/GetActivities] Something went wrong when trying to get activities! \n{e.Message}";
         return Results.Problem(err);
     }
 });
@@ -60,15 +87,16 @@ app.MapGet("/GetActivitiesByPreference", (string jsonPreferenceList) =>
 {
     try
     {
-        List<string> listOfPreferences = JsonSerializer.Deserialize<List<string>>(jsonPreferenceList);
+        var listOfPreferences = JsonSerializer.Deserialize<List<string>>(jsonPreferenceList);
         List<Activity> activityList = db.GetActivitiesByPreference(listOfPreferences);
         string json = JsonSerializer.Serialize(activityList);
 
         return Results.Accepted(json);
     } 
-    catch
+    catch (Exception e)
     {
-        return Results.BadRequest("Something went wrong");
+        string err = $"[ACTIVITY DATABASE][/GetActivitiesByPreference] Something went wrong when trying to get activities! \n{e.Message}";
+        return Results.Problem(err);
     }
     
 });
@@ -76,30 +104,39 @@ app.MapGet("/GetActivitiesByPreference", (string jsonPreferenceList) =>
 //Retrieves all activities organized by the given user.
 app.MapGet("/GetUserActivities", (int userID) =>
 {
-    List<Activity> activityList = db.GetUserActivities(userID);
-    string json = JsonSerializer.Serialize(activityList);
+    try
+    {
+        List<Activity> activityList = db.GetUserActivities(userID);
+        string json = JsonSerializer.Serialize(activityList);
 
-    return json;
+        return Results.Accepted(json);
+    }
+    catch
+    {
+        string err = $"[ACTIVITY DATABASE][/GetActivitiesByPreference] Something went wrong when trying to get activities!";
+        return Results.Problem(err);
+    }
 });
 
 //Starts retrieval of new activities, using API calls.
 app.MapGet("/UpdateActivities", () =>
 {
+    db.UpdateActivities();
     return "notImplemented";
 });
 
 //Removes the given activity from the activity database
-app.MapGet("/RemoveActivities", (string jsonActivityList) =>
+app.MapDelete("/RemoveActivities", (string jsonActivityList) =>
 {
     try
     {
-        List<int> listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
+        var listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
         db.RemoveActivities(listOfActivityID);
         return Results.Accepted("Activity deleted");
     }
     catch
     {
-        return Results.BadRequest("Something went wrong");
+        return Results.BadRequest($"[ACTIVITY DATABASE][/RemoveActivities] Something went wrong when trying to remove activities!");
     }
     
 });

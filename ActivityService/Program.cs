@@ -13,7 +13,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 
 //Adds an activity to the database
-app.MapGet("/AddActivity", (string title, string host, string location, string date, string imageurl, string url, string description) =>
+app.MapPost("/AddActivity", (string title, string host, string location, string date, string imageurl, string url, string description) =>
 {
     Activity act = new Activity(1, title, host, location, date, imageurl, url, description, true);
     try
@@ -126,7 +126,7 @@ app.MapGet("/UpdateActivities", () =>
 });
 
 //Removes the given activity from the activity database
-app.MapGet("/RemoveActivities", (string jsonActivityList) =>
+app.MapDelete("/RemoveActivities", (string jsonActivityList) =>
 {
     try
     {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection.PortableExecutable;
 using MySql.Data.MySqlClient;
+using System.Net.Http.Headers;
 
 namespace ActivityService.Classes
 {
@@ -267,8 +268,10 @@ namespace ActivityService.Classes
         }
 
         //Starts retrieval of new activities, using API calls
-        public void UpdateActivities()
+        public async void UpdateActivities()
         {
+            using HttpClient client = new();
+            var json = await client.GetStringAsync("/Scrape"); //Sæt det rigtige endpoint ind til scraperen
         }
 
         //Removes activities from the database. Requires proper role

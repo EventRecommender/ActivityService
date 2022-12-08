@@ -119,10 +119,17 @@ app.MapGet("/GetUserActivities", (int userID) =>
 });
 
 //Starts retrieval of new activities, using API calls.
-app.MapGet("/UpdateActivities", () =>
+app.MapPost("/UpdateActivities", () =>
 {
-    db.UpdateActivities();
-    return "notImplemented";
+    try
+    {
+        db.UpdateActivities();
+        return Results.Accepted();
+    }
+    catch (Exception e)
+    {
+        return Results.BadRequest(e.Message);
+    }
 });
 
 //Removes the given activity from the activity database

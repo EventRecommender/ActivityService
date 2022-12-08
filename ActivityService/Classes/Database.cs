@@ -2,6 +2,7 @@
 using System.Reflection.PortableExecutable;
 using MySql.Data.MySqlClient;
 using System.Net.Http.Headers;
+using System.Text.Json;
 
 namespace ActivityService.Classes
 {
@@ -12,14 +13,33 @@ namespace ActivityService.Classes
 
         }
 
-        string connectionString = @"server=mysql;userid=root;password=super;database=activity_db";
+        string connectionString = @"server=activity_database;userid=root;password=super;database=activity_db";
 
         //Adds an activity to the database
-   
         public void AddActivity(Activity activity)
         {
-            string query = $"INSERT INTO activity (title, host, place, time, img, path, description, active) VALUES " +
-                    $"({activity.title}, {activity.host}, {activity.location}, {activity.date}, {activity.imageurl}, {activity.url}, {activity.description}, {activity.active});";
+            string query = $"IF NOT EXISTS (SELECT * FROM activity " +
+                                            $"WHERE title = '{activity.title}' " +
+                                            $"AND host = '{activity.host}' " +
+                                            $"AND place = '{activity.location}' " +
+                                            $"AND time = {activity.date} " +
+                                            $"AND img = '{activity.imageurl}' " +
+                                            $"AND path = '{activity.url}' " +
+                                            $"AND description = '{activity.description}' " +
+                                            $"AND active = {activity.active})" +
+                            $"BEGIN" +
+                                $"INSERT INTO activity (title, host, place, time, img, path, description, active) " +
+                                $"VALUES ('{activity.title}', '{activity.host}', '{activity.location}', {activity.date}, '{activity.imageurl}', '{activity.url}', '{activity.description}', {activity.active})" +
+                            $"END";
+
+            //var sb = new System.Text.StringBuilder();
+            //foreach (Activity x in activityList.Skip(1))
+            //{
+            //    sb.AppendLine($", ('{x.title}', '{x.host}', '{x.location}', {x.date}, '{x.imageurl}', '{x.url}', '{x.description}', {x.active})");
+            //}
+            //query += sb + ";";
+
+
             using MySqlConnection con = new MySqlConnection(connectionString);
             MySqlCommand command = new MySqlCommand(query, con);
 
@@ -270,11 +290,34 @@ namespace ActivityService.Classes
         //Starts retrieval of new activities, using API calls
         public async void UpdateActivities()
         {
-            using HttpClient client = new();
-            var json = await client.GetStringAsync("/Scrape"); //Sæt det rigtige endpoint ind til scraperen
+            try
+            {
+                using HttpClient client = new();
+                var json = await client.GetStringAsync("http://127.0.0.1:5000/Scrape");
+                var activitiesToAdd = JsonSerializer.Deserialize<List<Activity>>(json);
+                foreach (Activity a in activitiesToAdd)
+                {
+                    AddActivity(a);
+                }
+            }
+            catch (InvalidOperationException e)
+            {
+                Console.Write("[DATABASE][/UpdateActivities] InvalidOperationException. Failed to update activities: \n" + e.Message);
+                throw;
+            }
+            catch (HttpRequestException e)
+            {
+                Console.Write("[DATABASE][/UpdateActivities] HttpRequestException. Failed to connect to Scraper: \n" + e.Message);
+                throw;
+            }
+            catch (TaskCanceledException e)
+            {
+                Console.Write("[DATABASE][/UpdateActivities] TaskCanceledException. Task cancelled: \n" + e.Message);
+                throw;
+            }
         }
 
-        //Removes activities from the database. Requires proper role
+        //Removes activities from the database
         public void RemoveActivities(List<int> listOfActivityID) 
         {
             var query = $"DELETE FROM activitydb WHERE id IN ('{listOfActivityID.First()}'";

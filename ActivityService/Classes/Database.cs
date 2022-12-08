@@ -18,19 +18,28 @@ namespace ActivityService.Classes
         //Adds an activity to the database
         public void AddActivity(Activity activity)
         {
-            string query = $"IF NOT EXISTS (SELECT * FROM activity " +
-                                            $"WHERE title = '{activity.title}' " +
-                                            $"AND host = '{activity.host}' " +
-                                            $"AND place = '{activity.location}' " +
-                                            $"AND time = {activity.date} " +
-                                            $"AND img = '{activity.imageurl}' " +
-                                            $"AND path = '{activity.url}' " +
-                                            $"AND description = '{activity.description}' " +
-                                            $"AND active = {activity.active})" +
-                            $"BEGIN" +
-                                $"INSERT INTO activity (title, host, place, time, img, path, description, active) " +
-                                $"VALUES ('{activity.title}', '{activity.host}', '{activity.location}', {activity.date}, '{activity.imageurl}', '{activity.url}', '{activity.description}', {activity.active})" +
-                            $"END";
+            //"INSERT INTO `table` (`value1`, `value2`) " +
+            //"SELECT 'stuff for value1', 'stuff for value2' FROM DUAL " +
+            //"WHERE NOT EXISTS (SELECT * FROM `table` " +
+            //  "WHERE `value1`='stuff for value1' AND `value2`='stuff for value2' LIMIT 1)"
+            string query = $"INSERT INTO 'activity' (title, host, place, time, img, path, description, active) " +
+                        $"SELECT '{activity.title}', '{activity.host}', '{activity.location}', {activity.date}, '{activity.imageurl}', '{activity.url}', '{activity.description}', {activity.active} FROM DUAL" +
+                        $"WHERE NOT EXISTS (SELECT * FROM 'activity' " +
+                            $"WHERE 'title' = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.location}' AND time = '{activity.date}' AND img = '{activity.imageurl}' AND path = '{activity.url}' AND description = '{activity.description}' AND active = {activity.active} LIMIT 1)";
+
+            //string query = $"IF NOT EXISTS (SELECT * FROM 'activity' " +
+            //                                $"WHERE title = '{activity.title}' " +
+            //                                $"AND host = '{activity.host}' " +
+            //                                $"AND place = '{activity.location}' " +
+            //                                $"AND time = {activity.date} " +
+            //                                $"AND img = '{activity.imageurl}' " +
+            //                                $"AND path = '{activity.url}' " +
+            //                                $"AND description = '{activity.description}' " +
+            //                                $"AND active = {activity.active})" +
+            //                $"BEGIN" +
+            //                    $"INSERT INTO activity (title, host, place, time, img, path, description, active) " +
+            //                    $"VALUES ('{activity.title}', '{activity.host}', '{activity.location}', {activity.date}, '{activity.imageurl}', '{activity.url}', '{activity.description}', {activity.active});" +
+            //                $"END;";
 
             //var sb = new System.Text.StringBuilder();
             //foreach (Activity x in activityList.Skip(1))
@@ -294,11 +303,16 @@ namespace ActivityService.Classes
             {
                 using HttpClient client = new();
                 var json = await client.GetStringAsync("http://127.0.0.1:5000/Scrape");
-                var activitiesToAdd = JsonSerializer.Deserialize<List<Activity>>(json);
-                foreach (Activity a in activitiesToAdd)
+                if (json != null)
                 {
-                    AddActivity(a);
+                    var activitiesToAdd = JsonSerializer.Deserialize<List<Activity>>(json)!;
+                    foreach (Activity a in activitiesToAdd)
+                    {
+                        AddActivity(a);
+                    }
                 }
+                else
+                    throw new ArgumentNullException();
             }
             catch (InvalidOperationException e)
             {
@@ -313,6 +327,11 @@ namespace ActivityService.Classes
             catch (TaskCanceledException e)
             {
                 Console.Write("[DATABASE][/UpdateActivities] TaskCanceledException. Task cancelled: \n" + e.Message);
+                throw;
+            }
+            catch (ArgumentNullException e)
+            {
+                Console.Write("[DATABASE][/UpdateActivities] ArgumentNullException. No activities fetched: \n" + e.Message);
                 throw;
             }
         }

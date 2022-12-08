@@ -50,7 +50,7 @@ app.MapGet("/GetActivities", (string function, string area, int monthsForward, s
                 if (jsonActivityList != null)
                 {
                     var listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
-                    activityList = db.GetActivities(listOfActivityID);
+                    activityList = db.GetActivities(listOfActivityID!);
                     json = JsonSerializer.Serialize(activityList);
 
                     return Results.Accepted(json);
@@ -88,7 +88,7 @@ app.MapGet("/GetActivitiesByPreference", (string jsonPreferenceList) =>
     try
     {
         var listOfPreferences = JsonSerializer.Deserialize<List<string>>(jsonPreferenceList);
-        List<Activity> activityList = db.GetActivitiesByPreference(listOfPreferences);
+        List<Activity> activityList = db.GetActivitiesByPreference(listOfPreferences!);
         string json = JsonSerializer.Serialize(activityList);
 
         return Results.Accepted(json);
@@ -138,8 +138,8 @@ app.MapDelete("/RemoveActivities", (string jsonActivityList) =>
     try
     {
         var listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
-        db.RemoveActivities(listOfActivityID);
-        return Results.Accepted("Activity deleted");
+        db.RemoveActivities(listOfActivityID!);
+        return Results.Accepted("Activities deleted");
     }
     catch
     {

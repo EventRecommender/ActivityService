@@ -19,7 +19,7 @@ app.MapPost("/AddActivity", (string title, string host, string location, string 
     try
     {
         db.AddActivity(act);
-        return Results.Accepted();
+        return Results.Ok();
     }
     catch (Exception e)
     {
@@ -40,12 +40,12 @@ app.MapGet("/GetActivities", (string function, string area, int monthsForward, s
                 activityList = db.GetActivities(area);
                 json = JsonSerializer.Serialize(activityList);
 
-                return Results.Accepted(json);
+                return Results.Ok(json);
             case "areaTime":
                 activityList = db.GetActivities(area, monthsForward);
                 json = JsonSerializer.Serialize(activityList);
 
-                return Results.Accepted(json);
+                return Results.Ok(json);
             case "activity":
                 if (jsonActivityList != null)
                 {
@@ -53,7 +53,7 @@ app.MapGet("/GetActivities", (string function, string area, int monthsForward, s
                     activityList = db.GetActivities(listOfActivityID!);
                     json = JsonSerializer.Serialize(activityList);
 
-                    return Results.Accepted(json);
+                    return Results.Ok(json);
                 }
                 else
                     throw new ArgumentNullException();
@@ -91,7 +91,7 @@ app.MapGet("/GetActivitiesByPreference", (string jsonPreferenceList) =>
         List<Activity> activityList = db.GetActivitiesByPreference(listOfPreferences!);
         string json = JsonSerializer.Serialize(activityList);
 
-        return Results.Accepted(json);
+        return Results.Ok(json);
     } 
     catch (Exception e)
     {
@@ -109,7 +109,7 @@ app.MapGet("/GetUserActivities", (int userID) =>
         List<Activity> activityList = db.GetUserActivities(userID);
         string json = JsonSerializer.Serialize(activityList);
 
-        return Results.Accepted(json);
+        return Results.Ok(json);
     }
     catch
     {
@@ -124,7 +124,7 @@ app.MapPost("/UpdateActivities", () =>
     try
     {
         db.UpdateActivities();
-        return Results.Accepted();
+        return Results.Ok();
     }
     catch (Exception e)
     {
@@ -139,7 +139,7 @@ app.MapDelete("/RemoveActivities", (string jsonActivityList) =>
     {
         var listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
         db.RemoveActivities(listOfActivityID!);
-        return Results.Accepted("Activities deleted");
+        return Results.Ok("Activities deleted");
     }
     catch
     {

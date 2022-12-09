@@ -22,10 +22,10 @@ namespace ActivityService.Classes
             //"SELECT 'stuff for value1', 'stuff for value2' FROM DUAL " +
             //"WHERE NOT EXISTS (SELECT * FROM `table` " +
             //  "WHERE `value1`='stuff for value1' AND `value2`='stuff for value2' LIMIT 1)"
-            string query = $"INSERT INTO 'activity' (title, host, place, time, img, path, description, active) " +
-                        $"SELECT '{activity.title}', '{activity.host}', '{activity.location}', {activity.date}, '{activity.imageurl}', '{activity.url}', '{activity.description}', {activity.active} FROM DUAL" +
-                        $"WHERE NOT EXISTS (SELECT * FROM 'activity' " +
-                            $"WHERE 'title' = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.location}' AND time = '{activity.date}' AND img = '{activity.imageurl}' AND path = '{activity.url}' AND description = '{activity.description}' AND active = {activity.active} LIMIT 1)";
+            string query = $"INSERT INTO activity (title, host, place, time, img, path, description, active) " +
+                        $"SELECT '{activity.title}', '{activity.host}', '{activity.place}', '{activity.date}', '{activity.img}', '{activity.url}', '{activity.description}', {activity.active} FROM DUAL " +
+                        $"WHERE NOT EXISTS (SELECT * FROM activity " +
+                            $"WHERE title = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.place}' AND time = '{activity.date}' AND img = '{activity.img}' AND path = '{activity.url}' AND description = '{activity.description}' AND active = {activity.active} LIMIT 1)";
 
             //string query = $"IF NOT EXISTS (SELECT * FROM 'activity' " +
             //                                $"WHERE title = '{activity.title}' " +
@@ -93,7 +93,7 @@ namespace ActivityService.Classes
                 while (reader.Read())
                 {
                     activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), "", reader.GetBoolean(8))); 
                 }
 
                 reader.Close();
@@ -136,7 +136,7 @@ namespace ActivityService.Classes
                 while (reader.Read())
                 {
                     activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), "", reader.GetBoolean(8)));
                 }
 
                 reader.Close();
@@ -183,7 +183,7 @@ namespace ActivityService.Classes
                 while (reader.Read())
                 {
                     activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), "", reader.GetBoolean(8)));
                 }
 
                 reader.Close();
@@ -272,7 +272,7 @@ namespace ActivityService.Classes
                 while (reader.Read())
                 {
                     activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                            reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                                            reader.GetString(5), reader.GetString(6), reader.GetString(7), "", reader.GetBoolean(8)));
                 }
 
                 reader.Close();
@@ -302,13 +302,17 @@ namespace ActivityService.Classes
             try
             {
                 using HttpClient client = new();
-                var json = await client.GetStringAsync("http://127.0.0.1:5000/Scrape");
+                var json = await client.GetStringAsync("http://scraper:5000/Scrape");
+                //throw new Exception(json);
                 if (json != null)
                 {
-                    var activitiesToAdd = JsonSerializer.Deserialize<List<Activity>>(json)!;
-                    foreach (Activity a in activitiesToAdd)
+                    var activitiesToAdd = JsonSerializer.Deserialize<List<List<Activity>>>(json)!;
+                    foreach (List<Activity> list in activitiesToAdd)
                     {
-                        AddActivity(a);
+                        foreach(Activity a in list) 
+                        {
+                            AddActivity(a);
+                        }
                     }
                 }
                 else
@@ -332,6 +336,11 @@ namespace ActivityService.Classes
             catch (ArgumentNullException e)
             {
                 Console.Write("[DATABASE][/UpdateActivities] ArgumentNullException. No activities fetched: \n" + e.Message);
+                throw;
+            }
+            catch (Exception e)
+            {
+                Console.Write("############################################################################################################################# " + e.Message);
                 throw;
             }
         }

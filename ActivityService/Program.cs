@@ -15,7 +15,7 @@ var app = builder.Build();
 //Adds an activity to the database
 app.MapPost("/AddActivity", (string title, string host, string location, string date, string imageurl, string url, string description) =>
 {
-    Activity act = new Activity(1, title, host, location, date, imageurl, url, description, true);
+    Activity act = new Activity(1, title, host, location, date, imageurl, url, description, null, true);
     try
     {
         db.AddActivity(act);

@@ -4,13 +4,11 @@ services:
     build: ./ActivityService
     container_name: activity-service
     ports:
-      - 80:80
+      - 8002:80
 
   mysql:
     image: mysql
     container_name: activity_database
-    ports:
-      - 3306:3306
     environment:
       MYSQL_ROOT_PASSWORD: super
       MYSQL_DATABASE: activity_db

@@ -12,10 +12,10 @@ namespace ActivityService.Classes
         public string img { get; set; }
         public string url { get; set; }
         public string description { get; set; }
-        public string type {get; set; }
+        public List<string> type {get; set; }
         public bool active { get; set; }
 
-        public Activity(int id, string title, string host, string place, string date, string img, string url, string description, string type, bool active)
+        public Activity(int id, string title, string host, string place, string date, string img, string url, string description, List<string> type, bool active)
         {
             this.id = id;
             this.title = title;

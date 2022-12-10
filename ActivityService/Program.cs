@@ -141,9 +141,9 @@ app.MapDelete("/RemoveActivities", (string jsonActivityList) =>
         db.RemoveActivities(listOfActivityID!);
         return Results.Ok("Activities deleted");
     }
-    catch
+    catch(Exception e)
     {
-        return Results.BadRequest($"[ACTIVITY DATABASE][/RemoveActivities] Something went wrong when trying to remove activities!");
+        return Results.BadRequest($"[ACTIVITY DATABASE][/RemoveActivities] Something went wrong when trying to remove activities! " + e);
     }
     
 });

@@ -3,6 +3,10 @@ using System.Reflection.PortableExecutable;
 using MySql.Data.MySqlClient;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text;
+using MySqlX.XDevAPI.Relational;
+using System.Data;
+using System.Configuration;
 
 namespace ActivityService.Classes
 {
@@ -49,7 +53,7 @@ namespace ActivityService.Classes
             //query += sb + ";";
 
 
-            using MySqlConnection con = new MySqlConnection(connectionString);
+			using MySqlConnection con = new MySqlConnection(connectionString);
             MySqlCommand command = new MySqlCommand(query, con);
 
             try
@@ -59,6 +63,9 @@ namespace ActivityService.Classes
                 reader.Close();
                 command.Dispose();
                 con.Close();
+
+                AddType(activity);
+
             }
             catch (InvalidOperationException e)
             {
@@ -75,6 +82,54 @@ namespace ActivityService.Classes
                 throw;
             }
         }
+
+        public void AddType(Activity activity)
+        {
+			using MySqlConnection con = new MySqlConnection(connectionString);
+			con.Open();
+
+            string query =  $"SELECT * FROM activity " +
+			                $"WHERE title = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.place}' AND time = '{activity.date}' AND img = '{activity.img}' AND path = '{activity.url}' AND description = '{activity.description}' AND active = {activity.active} LIMIT 1)";
+
+			MySqlCommand command = new MySqlCommand(query, con);
+            MySqlDataReader reader = command.ExecuteReader();
+
+            int actID = -1;
+
+            while (reader.Read())
+            {
+                actID = reader.GetInt32(0);
+            }
+            command.Dispose();
+            reader.Dispose();
+
+
+			List<string> types = activity.type.types;
+
+			StringBuilder sb = new StringBuilder($"INSERT INTO type (activityid, tag) VALUES ");
+			List<string> rows = new List<string>();
+			foreach (var type in types)
+			{
+				rows.Add(string.Format("('{0}', '{1}')", MySqlHelper.EscapeString(actID.ToString()), MySqlHelper.EscapeString(type)));
+			}
+			sb.Append(string.Join(",", rows));
+			sb.Append(";");
+            string typeQuery = sb.ToString();
+
+
+			command = new MySqlCommand(typeQuery, con);
+			MySqlDataAdapter adapter = new MySqlDataAdapter();
+
+			command.CommandType = CommandType.Text;
+			adapter.InsertCommand = command;
+			adapter.InsertCommand.ExecuteNonQuery();
+
+			command.Dispose();
+			adapter.Dispose();
+
+			con.Close();
+
+		}
         
         //Retrieves all activities hosted in a specific city
         public List<Activity> GetActivities(string city)
@@ -92,8 +147,8 @@ namespace ActivityService.Classes
 
                 while (reader.Read())
                 {
-                    activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), new List<string>(), reader.GetBoolean(8))); 
+                    activities.Add(new Activity(reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), null, reader.GetBoolean(8), reader.GetInt32(0))); 
                 }
 
                 reader.Close();
@@ -102,13 +157,17 @@ namespace ActivityService.Classes
 				//Add type
 				foreach (Activity activity in activities)
 				{
+                    List<string> types = new();
 					query = $"SELECT * FROM type WHERE activityid = {activity.id}";
 					using var command2 = new MySqlCommand(query, con);
 					using MySqlDataReader reader2 = command2.ExecuteReader();
 					while (reader2.Read())
 					{
-						activity.type.Add(reader.GetString(1));
+						types.Add(reader2.GetString(1));
 					}
+                    activity.type = new ActivityType(types);
+
+                    reader2.Close();
 					command2.Dispose();
 				}
 
@@ -150,8 +209,8 @@ namespace ActivityService.Classes
 
                 while (reader.Read())
                 {
-                    activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), new List<string>(), reader.GetBoolean(8)));
+                    activities.Add(new Activity(reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), null, reader.GetBoolean(8), reader.GetInt32(0)));
                 }
 
                 reader.Close();
@@ -161,13 +220,17 @@ namespace ActivityService.Classes
 				//Add type
 				foreach (Activity activity in activities)
 				{
+					List<string> types = new();
 					query = $"SELECT * FROM type WHERE activityid = {activity.id}";
 					using var command2 = new MySqlCommand(query, con);
 					using MySqlDataReader reader2 = command2.ExecuteReader();
 					while (reader2.Read())
 					{
-						activity.type.Add(reader.GetString(1));
+						types.Add(reader2.GetString(1));
 					}
+					activity.type = new ActivityType(types);
+
+					reader2.Close();
 					command2.Dispose();
 				}
 
@@ -216,26 +279,30 @@ namespace ActivityService.Classes
                 List<Activity> activities = new List<Activity>();
                 while (reader.Read())
                 {
-                    activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), new List<string>(), reader.GetBoolean(8)));
+                    activities.Add(new Activity(reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), null, reader.GetBoolean(8), reader.GetInt32(0)));
                 }
 
                 reader.Close();
                 command.Dispose();
-                
-                
 
-                //Add type
+
+
+				//Add type
 				foreach (Activity activity in activities)
 				{
+					List<string> types = new();
 					query = $"SELECT * FROM type WHERE activityid = {activity.id}";
 					using var command2 = new MySqlCommand(query, con);
 					using MySqlDataReader reader2 = command2.ExecuteReader();
 					while (reader2.Read())
 					{
-						activity.type.Add(reader.GetString(1));
+						types.Add(reader2.GetString(1));
 					}
-                    command2.Dispose();
+					activity.type = new ActivityType(types);
+
+					reader2.Close();
+					command2.Dispose();
 				}
 
 				con.Close();
@@ -301,8 +368,12 @@ namespace ActivityService.Classes
                 con.Close();
 
 
+                if (activityList.Count > 0)
+                {
+					return GetActivities(activityList);
+				}
 
-                return GetActivities(activityList);
+                return new List<Activity>();
             }
             catch (InvalidOperationException e)
             {
@@ -337,8 +408,8 @@ namespace ActivityService.Classes
 
                 while (reader.Read())
                 {
-                    activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                            reader.GetString(5), reader.GetString(6), reader.GetString(7), new List<string>(), reader.GetBoolean(8)));
+                    activities.Add(new Activity(reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                                            reader.GetString(5), reader.GetString(6), reader.GetString(7), null, reader.GetBoolean(8),reader.GetInt32(0)));
                 }
 
                 reader.Close();
@@ -347,12 +418,18 @@ namespace ActivityService.Classes
 				//Add type
 				foreach (Activity activity in activities)
 				{
+					List<string> types = new();
 					query = $"SELECT * FROM type WHERE activityid = {activity.id}";
-					using MySqlDataReader reader2 = command.ExecuteReader();
+					using var command2 = new MySqlCommand(query, con);
+					using MySqlDataReader reader2 = command2.ExecuteReader();
 					while (reader2.Read())
 					{
-						activity.type.Add(reader.GetString(1));
+						types.Add(reader2.GetString(1));
 					}
+					activity.type = new ActivityType(types);
+
+					reader2.Close();
+					command2.Dispose();
 				}
 
 

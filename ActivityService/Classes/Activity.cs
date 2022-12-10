@@ -12,10 +12,10 @@ namespace ActivityService.Classes
         public string img { get; set; }
         public string url { get; set; }
         public string description { get; set; }
-        public List<string> type {get; set; }
+        public ActivityType type { get; set; }
         public bool active { get; set; }
 
-        public Activity(int id, string title, string host, string place, string date, string img, string url, string description, List<string> type, bool active)
+        public Activity(string title, string host, string place, string date, string img, string url, string description = "", string type = "", bool active = true, int id = -1)
         {
             this.id = id;
             this.title = title;
@@ -24,8 +24,8 @@ namespace ActivityService.Classes
             this.date = date;
             this.img = img;
             this.url = url;
+            this.type.types.Add(type);
             this.description = description;
-            this.type = type;
             this.active = active;
         }
     }

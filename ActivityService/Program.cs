@@ -1,7 +1,7 @@
 using ActivityService.Classes;
 using System.Text.Json;
 using MySql.Data.MySqlClient;
-
+using System.Xml;
 
 var builder = WebApplication.CreateBuilder(args);
 Database db = new Database();
@@ -13,9 +13,11 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 
 //Adds an activity to the database
-app.MapPost("/AddActivity", (string title, string host, string location, string date, string imageurl, string url, string description) =>
+app.MapPost("/AddActivity", (string title, string host, string location, string date, string imageurl, string url, string description, string typesJSON, string type) =>
 {
-    Activity act = new Activity(1, title, host, location, date, imageurl, url, description, null, true);
+    List<string> types = JsonSerializer.Deserialize<List<string>>(typesJSON);
+
+    Activity act = new Activity(title, host, location, date, imageurl, url, description, type, true, -1);
     try
     {
         db.AddActivity(act);

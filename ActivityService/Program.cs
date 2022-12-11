@@ -13,9 +13,9 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 
 //Adds an activity to the database
-app.MapPost("/AddActivity", (string title, string host, string location, string date, string imageurl, string url, string description) =>
+app.MapPost("/AddActivity", (string title, string host, string location, string date, string imageurl, string url, string description, string type) =>
 {
-    Activity act = new Activity(1, title, host, location, date, imageurl, url, description, true);
+    Activity act = new Activity(1, title, host, location, date, imageurl, url, description, true, type);
     try
     {
         db.AddActivity(act);
@@ -58,7 +58,7 @@ app.MapGet("/GetActivities", (string function, string area, int monthsForward, s
                 else
                     throw new ArgumentNullException();
         }
-        throw new Exception("No valid functionality given!");
+        return Results.BadRequest("no valid function given");
     }
     catch (ArgumentNullException e)
     {

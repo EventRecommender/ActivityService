@@ -18,51 +18,34 @@ namespace ActivityService.Classes
         //Adds an activity to the database
         public void AddActivity(Activity activity)
         {
-            //"INSERT INTO `table` (`value1`, `value2`) " +
-            //"SELECT 'stuff for value1', 'stuff for value2' FROM DUAL " +
-            //"WHERE NOT EXISTS (SELECT * FROM `table` " +
-            //  "WHERE `value1`='stuff for value1' AND `value2`='stuff for value2' LIMIT 1)"
-            string query = $"INSERT INTO 'activity' (title, host, place, time, img, path, description, active) " +
-                        $"SELECT '{activity.title}', '{activity.host}', '{activity.location}', {activity.date}, '{activity.imageurl}', '{activity.url}', '{activity.description}', {activity.active} FROM DUAL" +
-                        $"WHERE NOT EXISTS (SELECT * FROM 'activity' " +
-                            $"WHERE 'title' = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.location}' AND time = '{activity.date}' AND img = '{activity.imageurl}' AND path = '{activity.url}' AND description = '{activity.description}' AND active = {activity.active} LIMIT 1)";
+            string query = $"INSERT INTO activity (title, host, place, time, img, path, description, active) " +
+                           $"SELECT '{activity.title}' AS title, '{activity.host}' AS host, '{activity.place}' AS place, '{activity.date}' AS time, '{activity.img}' AS img, '{activity.url}' AS path, '{activity.description}' AS description, {activity.active} AS active FROM DUAL " +
+                           $"WHERE NOT EXISTS (SELECT * FROM activity " +
+                           $"WHERE 'title' = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.place}' AND time = '{activity.date}' AND img = '{activity.img}' AND path = '{activity.url}' AND description = '{activity.description}' AND active = {activity.active} LIMIT 1)";
 
-            //string query = $"IF NOT EXISTS (SELECT * FROM 'activity' " +
-            //                                $"WHERE title = '{activity.title}' " +
-            //                                $"AND host = '{activity.host}' " +
-            //                                $"AND place = '{activity.location}' " +
-            //                                $"AND time = {activity.date} " +
-            //                                $"AND img = '{activity.imageurl}' " +
-            //                                $"AND path = '{activity.url}' " +
-            //                                $"AND description = '{activity.description}' " +
-            //                                $"AND active = {activity.active})" +
-            //                $"BEGIN" +
-            //                    $"INSERT INTO activity (title, host, place, time, img, path, description, active) " +
-            //                    $"VALUES ('{activity.title}', '{activity.host}', '{activity.location}', {activity.date}, '{activity.imageurl}', '{activity.url}', '{activity.description}', {activity.active});" +
-            //                $"END;";
-
-            //var sb = new System.Text.StringBuilder();
-            //foreach (Activity x in activityList.Skip(1))
-            //{
-            //    sb.AppendLine($", ('{x.title}', '{x.host}', '{x.location}', {x.date}, '{x.imageurl}', '{x.url}', '{x.description}', {x.active})");
-            //}
-            //query += sb + ";";
-
+            string typeQuery = $"INSERT INTO type(activityid, tag) " +
+                               $"VALUES((SELECT activity.id FROM activity WHERE activity.title = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.place}' AND time = '{activity.date}' AND description = '{activity.description}' LIMIT 1), '{activity.type}');";
 
             using MySqlConnection con = new MySqlConnection(connectionString);
             MySqlCommand command = new MySqlCommand(query, con);
+            MySqlCommand typeCommand = new MySqlCommand(typeQuery, con);
 
             try
             {
                 con.Open();
-                MySqlDataReader reader = command.ExecuteReader();
-                reader.Close();
+                var tr = con.BeginTransaction();
+                command.ExecuteNonQuery();
+                typeCommand.ExecuteNonQuery();
                 command.Dispose();
+                typeCommand.Dispose();
+                tr.Commit();
                 con.Close();
             }
             catch (InvalidOperationException e)
             {
                 command.Dispose();
+                typeCommand.Dispose();
+
                 con.Close();
                 Console.Write("[DATABASE][/AddActivity] InvalidOperationException. Failed to add activity to database: \n" + e.Message);
                 throw;
@@ -70,6 +53,8 @@ namespace ActivityService.Classes
             catch (MySqlException e)
             {
                 command.Dispose();
+                typeCommand.Dispose();
+
                 con.Close();
                 Console.Write("[DATABASE][/AddActivity] MySqlException. Failed to add activity to database: \n" + e.Message);
                 throw;
@@ -93,7 +78,7 @@ namespace ActivityService.Classes
                 while (reader.Read())
                 {
                     activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8), ""));
                 }
 
                 reader.Close();
@@ -122,7 +107,7 @@ namespace ActivityService.Classes
         {
             DateTime currentDate = DateTime.Now;
             DateTime specifiedDate = DateTime.Now.AddMonths(monthsForward);
-            var query = $"SELECT * FROM activity WHERE place='{city}' AND time BETWEEN {currentDate} AND {specifiedDate};";
+            var query = $"SELECT * FROM activity WHERE place = '{city}' AND time BETWEEN current_timestamp() AND '{specifiedDate.ToString("yyyy-MM-dd HH:mm:ss")}';";
             List<Activity> activities = new List<Activity>();
 
             using var con = new MySqlConnection(connectionString);
@@ -136,7 +121,7 @@ namespace ActivityService.Classes
                 while (reader.Read())
                 {
                     activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8), ""));
                 }
 
                 reader.Close();
@@ -183,7 +168,7 @@ namespace ActivityService.Classes
                 while (reader.Read())
                 {
                     activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8), ""));
                 }
 
                 reader.Close();
@@ -257,7 +242,7 @@ namespace ActivityService.Classes
         //Retrieves all activities created by a specific organization
         public List<Activity> GetUserActivities(int organizerId)
         {
-            var query = $"SELECT activityid FROM type WHERE host = {organizerId}";
+            var query = $"SELECT * FROM activity WHERE host = {organizerId}";
             List<Activity> activities = new List<Activity>();
 
             using var con = new MySqlConnection(connectionString);
@@ -272,7 +257,7 @@ namespace ActivityService.Classes
                 while (reader.Read())
                 {
                     activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                            reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                                            reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8), ""));
                 }
 
                 reader.Close();
@@ -302,14 +287,18 @@ namespace ActivityService.Classes
             try
             {
                 using HttpClient client = new();
-                var json = await client.GetStringAsync("http://127.0.0.1:5000/Scrape");
+                var json = await client.GetStringAsync("http://scraper-service:5000/Scrape");
                 if (json != null)
                 {
-                    var activitiesToAdd = JsonSerializer.Deserialize<List<Activity>>(json)!;
-                    foreach (Activity a in activitiesToAdd)
+                    var activitiesToAdd = JsonSerializer.Deserialize<List<List<Activity>>>(json)!;
+                    foreach (List<Activity> list in activitiesToAdd)
                     {
-                        AddActivity(a);
+                        foreach (Activity a in list)
+                        {
+                            AddActivity(a);
+                        }
                     }
+                        
                 }
                 else
                     throw new ArgumentNullException();
@@ -339,7 +328,7 @@ namespace ActivityService.Classes
         //Removes activities from the database
         public void RemoveActivities(List<int> listOfActivityID) 
         {
-            var query = $"DELETE FROM activitydb WHERE id IN ('{listOfActivityID.First()}'";
+            var query = $"DELETE FROM activity WHERE id IN ('{listOfActivityID.First()}'";
 
             var sb = new System.Text.StringBuilder();
             foreach (int x in listOfActivityID.Skip(1))

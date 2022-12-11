@@ -15,6 +15,7 @@ CREATE TABLE type (
     activityid INT NOT NULL,
     tag VARCHAR(255) NOT NULL,
     FOREIGN KEY (activityid) REFERENCES activity(id)
+    ON DELETE CASCADE
 );
 
 CREATE TABLE tags (

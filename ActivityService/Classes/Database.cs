@@ -148,13 +148,16 @@ namespace ActivityService.Classes
         //Retrieves specific activities by given ID's
         public List<Activity> GetActivities(List<int> listOfActivityID)
         {
-            string query = $"SELECT * FROM activity WHERE id IN ('{listOfActivityID.First()}'";
+            string pref = "";
+            foreach (int i in listOfActivityID)
+            {
+                pref += "'" + i.ToString() + "',";
+            }
+            pref = pref.Remove(pref.Length -1,1);
+
+            string query = $"SELECT * FROM activity WHERE id IN ({pref})";
 
             var sb = new System.Text.StringBuilder();
-            foreach (int x in listOfActivityID.Skip(1)){
-                sb.AppendLine($", '{x}'");
-            }
-            query += sb + ");";
 
             using var con = new MySqlConnection(connectionString);
             using var command = new MySqlCommand(query, con);
@@ -195,13 +198,15 @@ namespace ActivityService.Classes
         //Retrieves activities containing specific tags
         public List<Activity> GetActivitiesByPreference(List<string> listOfPreferences)
         {
-            var query = $"SELECT activityid FROM type WHERE tag IN ('{listOfPreferences.First()}'";
-            var sb = new System.Text.StringBuilder();
-            foreach (string x in listOfPreferences.Skip(1))
+            string pref = "";
+            foreach (string s in listOfPreferences)
             {
-                sb.AppendLine($", {x}");
+                pref += "'" + s + "',";
             }
-            query += sb + ");";
+            pref = pref.Remove(pref.Length -1,1);
+
+            var query = $"SELECT activityid FROM type WHERE tag IN ({pref})";
+            var sb = new System.Text.StringBuilder();
 
             using var con = new MySqlConnection(connectionString);
             using var command = new MySqlCommand(query, con);

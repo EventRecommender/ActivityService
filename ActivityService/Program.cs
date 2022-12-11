@@ -38,22 +38,16 @@ app.MapGet("/GetActivities", (string function, string area, int monthsForward, s
         {
             case "area":
                 activityList = db.GetActivities(area);
-                json = JsonSerializer.Serialize(activityList);
-
-                return Results.Ok(json);
+                return Results.Json(activityList);
             case "areaTime":
                 activityList = db.GetActivities(area, monthsForward);
-                json = JsonSerializer.Serialize(activityList);
-
-                return Results.Ok(json);
+                return Results.Json(activityList);
             case "activity":
                 if (jsonActivityList != null)
                 {
                     var listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
                     activityList = db.GetActivities(listOfActivityID!);
-                    json = JsonSerializer.Serialize(activityList);
-
-                    return Results.Ok(json);
+                    return Results.Json(activityList);
                 }
                 else
                     throw new ArgumentNullException();
@@ -87,11 +81,12 @@ app.MapGet("/GetActivitiesByPreference", (string jsonPreferenceList) =>
 {
     try
     {
-        var listOfPreferences = JsonSerializer.Deserialize<List<string>>(jsonPreferenceList);
-        List<Activity> activityList = db.GetActivitiesByPreference(listOfPreferences!);
-        string json = JsonSerializer.Serialize(activityList);
-
-        return Results.Ok(json);
+        var listOfPreferences = JsonSerializer.Deserialize<Dictionary<string,int>>(jsonPreferenceList);
+        //TODO TEMP FIX
+        List<string> listOfKeys = listOfPreferences.Keys.ToList();
+        List<Activity> activityList = db.GetActivitiesByPreference(listOfKeys!);
+        
+        return Results.Json(activityList);
     } 
     catch (Exception e)
     {
@@ -107,9 +102,8 @@ app.MapGet("/GetUserActivities", (int userID) =>
     try
     {
         List<Activity> activityList = db.GetUserActivities(userID);
-        string json = JsonSerializer.Serialize(activityList);
+        return Results.Json(activityList);
 
-        return Results.Ok(json);
     }
     catch
     {

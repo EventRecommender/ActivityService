@@ -1,7 +1,7 @@
 using ActivityService.Classes;
 using System.Text.Json;
 using MySql.Data.MySqlClient;
-
+using System.Xml;
 
 var builder = WebApplication.CreateBuilder(args);
 Database db = new Database();
@@ -13,13 +13,15 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 
 //Adds an activity to the database
-app.MapPost("/AddActivity", (string title, string host, string location, string date, string imageurl, string url, string description) =>
+app.MapPost("/AddActivity", (string title, string host, string location, string date, string imageurl, string url, string description, string typesJSON, string type) =>
 {
-    Activity act = new Activity(1, title, host, location, date, imageurl, url, description, true);
+    List<string> types = JsonSerializer.Deserialize<List<string>>(typesJSON);
+
+    Activity act = new Activity(title, host, location, date, imageurl, url, description, type, true, -1);
     try
     {
         db.AddActivity(act);
-        return Results.Accepted();
+        return Results.Ok();
     }
     catch (Exception e)
     {
@@ -40,20 +42,20 @@ app.MapGet("/GetActivities", (string function, string area, int monthsForward, s
                 activityList = db.GetActivities(area);
                 json = JsonSerializer.Serialize(activityList);
 
-                return Results.Accepted(json);
+                return Results.Ok(json);
             case "areaTime":
                 activityList = db.GetActivities(area, monthsForward);
                 json = JsonSerializer.Serialize(activityList);
 
-                return Results.Accepted(json);
+                return Results.Ok(json);
             case "activity":
                 if (jsonActivityList != null)
                 {
                     var listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
-                    activityList = db.GetActivities(listOfActivityID);
+                    activityList = db.GetActivities(listOfActivityID!);
                     json = JsonSerializer.Serialize(activityList);
 
-                    return Results.Accepted(json);
+                    return Results.Ok(json);
                 }
                 else
                     throw new ArgumentNullException();
@@ -88,10 +90,10 @@ app.MapGet("/GetActivitiesByPreference", (string jsonPreferenceList) =>
     try
     {
         var listOfPreferences = JsonSerializer.Deserialize<List<string>>(jsonPreferenceList);
-        List<Activity> activityList = db.GetActivitiesByPreference(listOfPreferences);
+        List<Activity> activityList = db.GetActivitiesByPreference(listOfPreferences!);
         string json = JsonSerializer.Serialize(activityList);
 
-        return Results.Accepted(json);
+        return Results.Ok(json);
     } 
     catch (Exception e)
     {
@@ -109,7 +111,7 @@ app.MapGet("/GetUserActivities", (int userID) =>
         List<Activity> activityList = db.GetUserActivities(userID);
         string json = JsonSerializer.Serialize(activityList);
 
-        return Results.Accepted(json);
+        return Results.Ok(json);
     }
     catch
     {
@@ -124,7 +126,7 @@ app.MapPost("/UpdateActivities", () =>
     try
     {
         db.UpdateActivities();
-        return Results.Accepted();
+        return Results.Ok();
     }
     catch (Exception e)
     {
@@ -138,12 +140,12 @@ app.MapDelete("/RemoveActivities", (string jsonActivityList) =>
     try
     {
         var listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
-        db.RemoveActivities(listOfActivityID);
-        return Results.Accepted("Activity deleted");
+        db.RemoveActivities(listOfActivityID!);
+        return Results.Ok("Activities deleted");
     }
-    catch
+    catch(Exception e)
     {
-        return Results.BadRequest($"[ACTIVITY DATABASE][/RemoveActivities] Something went wrong when trying to remove activities!");
+        return Results.BadRequest($"[ACTIVITY DATABASE][/RemoveActivities] Something went wrong when trying to remove activities! " + e);
     }
     
 });

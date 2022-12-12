@@ -3,6 +3,10 @@ using System.Reflection.PortableExecutable;
 using MySql.Data.MySqlClient;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text;
+using MySqlX.XDevAPI.Relational;
+using System.Data;
+using System.Configuration;
 
 namespace ActivityService.Classes
 {
@@ -18,19 +22,28 @@ namespace ActivityService.Classes
         //Adds an activity to the database
         public void AddActivity(Activity activity)
         {
-            string query = $"IF NOT EXISTS (SELECT * FROM activity " +
-                                            $"WHERE title = '{activity.title}' " +
-                                            $"AND host = '{activity.host}' " +
-                                            $"AND place = '{activity.location}' " +
-                                            $"AND time = {activity.date} " +
-                                            $"AND img = '{activity.imageurl}' " +
-                                            $"AND path = '{activity.url}' " +
-                                            $"AND description = '{activity.description}' " +
-                                            $"AND active = {activity.active})" +
-                            $"BEGIN" +
-                                $"INSERT INTO activity (title, host, place, time, img, path, description, active) " +
-                                $"VALUES ('{activity.title}', '{activity.host}', '{activity.location}', {activity.date}, '{activity.imageurl}', '{activity.url}', '{activity.description}', {activity.active})" +
-                            $"END";
+            //"INSERT INTO `table` (`value1`, `value2`) " +
+            //"SELECT 'stuff for value1', 'stuff for value2' FROM DUAL " +
+            //"WHERE NOT EXISTS (SELECT * FROM `table` " +
+            //  "WHERE `value1`='stuff for value1' AND `value2`='stuff for value2' LIMIT 1)"
+            string query = $"INSERT INTO activity (title, host, place, time, img, path, description, active) " +
+                        $"SELECT '{activity.title}', '{activity.host}', '{activity.place}', '{activity.date}', '{activity.img}', '{activity.url}', '{activity.description}', {activity.active} FROM DUAL " +
+                        $"WHERE NOT EXISTS (SELECT * FROM activity " +
+                            $"WHERE title = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.place}' AND time = '{activity.date}' AND img = '{activity.img}' AND path = '{activity.url}' AND description = '{activity.description}' AND active = {activity.active} LIMIT 1)";
+
+            //string query = $"IF NOT EXISTS (SELECT * FROM 'activity' " +
+            //                                $"WHERE title = '{activity.title}' " +
+            //                                $"AND host = '{activity.host}' " +
+            //                                $"AND place = '{activity.location}' " +
+            //                                $"AND time = {activity.date} " +
+            //                                $"AND img = '{activity.imageurl}' " +
+            //                                $"AND path = '{activity.url}' " +
+            //                                $"AND description = '{activity.description}' " +
+            //                                $"AND active = {activity.active})" +
+            //                $"BEGIN" +
+            //                    $"INSERT INTO activity (title, host, place, time, img, path, description, active) " +
+            //                    $"VALUES ('{activity.title}', '{activity.host}', '{activity.location}', {activity.date}, '{activity.imageurl}', '{activity.url}', '{activity.description}', {activity.active});" +
+            //                $"END;";
 
             //var sb = new System.Text.StringBuilder();
             //foreach (Activity x in activityList.Skip(1))
@@ -40,7 +53,7 @@ namespace ActivityService.Classes
             //query += sb + ";";
 
 
-            using MySqlConnection con = new MySqlConnection(connectionString);
+			using MySqlConnection con = new MySqlConnection(connectionString);
             MySqlCommand command = new MySqlCommand(query, con);
 
             try
@@ -50,6 +63,9 @@ namespace ActivityService.Classes
                 reader.Close();
                 command.Dispose();
                 con.Close();
+
+                AddType(activity);
+
             }
             catch (InvalidOperationException e)
             {
@@ -66,6 +82,54 @@ namespace ActivityService.Classes
                 throw;
             }
         }
+
+        public void AddType(Activity activity)
+        {
+			using MySqlConnection con = new MySqlConnection(connectionString);
+			con.Open();
+
+            string query =  $"SELECT * FROM activity " +
+			                $"WHERE title = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.place}' AND time = '{activity.date}' AND img = '{activity.img}' AND path = '{activity.url}' AND description = '{activity.description}' AND active = {activity.active} LIMIT 1)";
+
+			MySqlCommand command = new MySqlCommand(query, con);
+            MySqlDataReader reader = command.ExecuteReader();
+
+            int actID = -1;
+
+            while (reader.Read())
+            {
+                actID = reader.GetInt32(0);
+            }
+            command.Dispose();
+            reader.Dispose();
+
+
+			List<string> types = activity.type.types;
+
+			StringBuilder sb = new StringBuilder($"INSERT INTO type (activityid, tag) VALUES ");
+			List<string> rows = new List<string>();
+			foreach (var type in types)
+			{
+				rows.Add(string.Format("('{0}', '{1}')", MySqlHelper.EscapeString(actID.ToString()), MySqlHelper.EscapeString(type)));
+			}
+			sb.Append(string.Join(",", rows));
+			sb.Append(";");
+            string typeQuery = sb.ToString();
+
+
+			command = new MySqlCommand(typeQuery, con);
+			MySqlDataAdapter adapter = new MySqlDataAdapter();
+
+			command.CommandType = CommandType.Text;
+			adapter.InsertCommand = command;
+			adapter.InsertCommand.ExecuteNonQuery();
+
+			command.Dispose();
+			adapter.Dispose();
+
+			con.Close();
+
+		}
         
         //Retrieves all activities hosted in a specific city
         public List<Activity> GetActivities(string city)
@@ -83,13 +147,32 @@ namespace ActivityService.Classes
 
                 while (reader.Read())
                 {
-                    activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                    activities.Add(new Activity(reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), null, reader.GetBoolean(8), reader.GetInt32(0))); 
                 }
 
                 reader.Close();
                 command.Dispose();
-                con.Close();
+
+				//Add type
+				foreach (Activity activity in activities)
+				{
+                    List<string> types = new();
+					query = $"SELECT * FROM type WHERE activityid = {activity.id}";
+					using var command2 = new MySqlCommand(query, con);
+					using MySqlDataReader reader2 = command2.ExecuteReader();
+					while (reader2.Read())
+					{
+						types.Add(reader2.GetString(1));
+					}
+                    activity.type = new ActivityType(types);
+
+                    reader2.Close();
+					command2.Dispose();
+				}
+
+
+				con.Close();
                 return activities;
             }
             catch (InvalidOperationException e)
@@ -112,8 +195,8 @@ namespace ActivityService.Classes
         public List<Activity> GetActivities(string city, int monthsForward)
         {
             DateTime currentDate = DateTime.Now;
-            DateTime specifiedDate = DateTime.Now.AddMonths(monthsForward);
-            var query = $"SELECT * FROM activity WHERE place='{city}' AND time BETWEEN {currentDate} AND {specifiedDate};";
+            DateTime specifiedDate = (DateTime.Now).AddMonths(monthsForward);
+            var query = $"SELECT * FROM activity WHERE place='{city}' AND time BETWEEN '{currentDate}' AND '{specifiedDate}'";
             List<Activity> activities = new List<Activity>();
 
             using var con = new MySqlConnection(connectionString);
@@ -126,13 +209,36 @@ namespace ActivityService.Classes
 
                 while (reader.Read())
                 {
-                    activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                    activities.Add(new Activity(reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), null, reader.GetBoolean(8), reader.GetInt32(0)));
                 }
 
                 reader.Close();
                 command.Dispose();
-                con.Close();
+
+
+				//Add type
+				foreach (Activity activity in activities)
+				{
+					List<string> types = new();
+					query = $"SELECT * FROM type WHERE activityid = {activity.id}";
+					using var command2 = new MySqlCommand(query, con);
+					using MySqlDataReader reader2 = command2.ExecuteReader();
+					while (reader2.Read())
+					{
+						types.Add(reader2.GetString(1));
+					}
+					activity.type = new ActivityType(types);
+
+					reader2.Close();
+					command2.Dispose();
+				}
+
+
+
+
+
+				con.Close();
                 return activities;
             }
             catch (InvalidOperationException e)
@@ -173,14 +279,34 @@ namespace ActivityService.Classes
                 List<Activity> activities = new List<Activity>();
                 while (reader.Read())
                 {
-                    activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                    activities.Add(new Activity(reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                                        reader.GetString(5), reader.GetString(6), reader.GetString(7), null, reader.GetBoolean(8), reader.GetInt32(0)));
                 }
 
                 reader.Close();
                 command.Dispose();
-                con.Close();
-                return activities;
+
+
+
+				//Add type
+				foreach (Activity activity in activities)
+				{
+					List<string> types = new();
+					query = $"SELECT * FROM type WHERE activityid = {activity.id}";
+					using var command2 = new MySqlCommand(query, con);
+					using MySqlDataReader reader2 = command2.ExecuteReader();
+					while (reader2.Read())
+					{
+						types.Add(reader2.GetString(1));
+					}
+					activity.type = new ActivityType(types);
+
+					reader2.Close();
+					command2.Dispose();
+				}
+
+				con.Close();
+				return activities;
             }
             catch (InvalidOperationException e)
             {
@@ -201,13 +327,26 @@ namespace ActivityService.Classes
         //Retrieves activities containing specific tags
         public List<Activity> GetActivitiesByPreference(List<string> listOfPreferences)
         {
-            var query = $"SELECT activityid FROM type WHERE tag IN ('{listOfPreferences.First()}'";
+            // different way to do what you did.
+            // i dont know which is better but this does not use a stringbuilder which might make a difference - Mads
+       
+            List<string> rows = new();
+            foreach (string pref in listOfPreferences)
+            {
+                rows.Add("'" + pref + "'");
+            }
+            string prefList = string.Join(",",rows);
+
+
+            var query = $"SELECT activityid FROM type WHERE tag IN ({prefList})";
+            /*
             var sb = new System.Text.StringBuilder();
             foreach (string x in listOfPreferences.Skip(1))
             {
                 sb.AppendLine($", {x}");
             }
             query += sb + ");";
+            */
 
             using var con = new MySqlConnection(connectionString);
             using var command = new MySqlCommand(query, con);
@@ -227,7 +366,14 @@ namespace ActivityService.Classes
                 reader.Close();
                 command.Dispose();
                 con.Close();
-                return GetActivities(activityList);
+
+
+                if (activityList.Count > 0)
+                {
+					return GetActivities(activityList);
+				}
+
+                return new List<Activity>();
             }
             catch (InvalidOperationException e)
             {
@@ -262,13 +408,32 @@ namespace ActivityService.Classes
 
                 while (reader.Read())
                 {
-                    activities.Add(new Activity(reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
-                                            reader.GetString(5), reader.GetString(6), reader.GetString(7), reader.GetBoolean(8)));
+                    activities.Add(new Activity(reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                                            reader.GetString(5), reader.GetString(6), reader.GetString(7), null, reader.GetBoolean(8),reader.GetInt32(0)));
                 }
 
                 reader.Close();
                 command.Dispose();
-                con.Close();
+
+				//Add type
+				foreach (Activity activity in activities)
+				{
+					List<string> types = new();
+					query = $"SELECT * FROM type WHERE activityid = {activity.id}";
+					using var command2 = new MySqlCommand(query, con);
+					using MySqlDataReader reader2 = command2.ExecuteReader();
+					while (reader2.Read())
+					{
+						types.Add(reader2.GetString(1));
+					}
+					activity.type = new ActivityType(types);
+
+					reader2.Close();
+					command2.Dispose();
+				}
+
+
+				con.Close();
                 return activities;
             }
             catch (InvalidOperationException e)
@@ -293,12 +458,21 @@ namespace ActivityService.Classes
             try
             {
                 using HttpClient client = new();
-                var json = await client.GetStringAsync("http://127.0.0.1:5000/Scrape");
-                var activitiesToAdd = JsonSerializer.Deserialize<List<Activity>>(json);
-                foreach (Activity a in activitiesToAdd)
+                var json = await client.GetStringAsync("http://scraper:5000/Scrape");
+                //throw new Exception(json);
+                if (json != null)
                 {
-                    AddActivity(a);
+                    var activitiesToAdd = JsonSerializer.Deserialize<List<List<Activity>>>(json)!;
+                    foreach (List<Activity> list in activitiesToAdd)
+                    {
+                        foreach(Activity a in list) 
+                        {
+                            AddActivity(a);
+                        }
+                    }
                 }
+                else
+                    throw new ArgumentNullException();
             }
             catch (InvalidOperationException e)
             {
@@ -315,12 +489,22 @@ namespace ActivityService.Classes
                 Console.Write("[DATABASE][/UpdateActivities] TaskCanceledException. Task cancelled: \n" + e.Message);
                 throw;
             }
+            catch (ArgumentNullException e)
+            {
+                Console.Write("[DATABASE][/UpdateActivities] ArgumentNullException. No activities fetched: \n" + e.Message);
+                throw;
+            }
+            catch (Exception e)
+            {
+                Console.Write("############################################################################################################################# " + e.Message);
+                throw;
+            }
         }
 
         //Removes activities from the database
         public void RemoveActivities(List<int> listOfActivityID) 
         {
-            var query = $"DELETE FROM activitydb WHERE id IN ('{listOfActivityID.First()}'";
+            var query = $"DELETE FROM activity WHERE id IN ('{listOfActivityID.First()}'";
 
             var sb = new System.Text.StringBuilder();
             foreach (int x in listOfActivityID.Skip(1))
@@ -332,27 +516,34 @@ namespace ActivityService.Classes
             using var con = new MySqlConnection(connectionString);
             using var command = new MySqlCommand(query, con);
 
-            try
+			MySqlDataAdapter adapter = new MySqlDataAdapter();
+
+			try
             {
                 con.Open();
 
-                using MySqlDataReader reader = command.ExecuteReader();
+				
 
-                reader.Close();
+				adapter.InsertCommand = command;
+				adapter.InsertCommand.ExecuteNonQuery();
+
                 command.Dispose();
+                adapter.Dispose();
                 con.Close();
             }
             catch (InvalidOperationException e)
             {
                 command.Dispose();
-                con.Close();
+				adapter.Dispose();
+				con.Close();
                 Console.Write("[DATABASE][/RemoveActivities] InvalidOperationException. Failed to remove activities: \n" + e.Message);
                 throw;
             }
             catch (MySqlException e)
             {
                 command.Dispose();
-                con.Close();
+				adapter.Dispose();
+				con.Close();
                 Console.Write("[DATABASE][/RemoveActivities] MySqlException. Failed to remove activities: \n" + e.Message);
                 throw;
             }

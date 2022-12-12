@@ -416,9 +416,23 @@ namespace ActivityService.Classes
         private string GenerateAddActivityQuery(Activity activity)
         {
             string query =  $"INSERT INTO activity (title, host, place, time, img, path, description, active) " +
-                            $"SELECT '{activity.title}' AS title, '{activity.host}' AS host, '{activity.place}' AS place, '{activity.date}' AS time, '{activity.img}' AS img, '{activity.url}' AS path, '{activity.description}' AS description, {activity.active} AS active FROM DUAL " +
+                            $"SELECT '{activity.title}' AS title, " +
+                                    $"'{activity.host}' AS host, " +
+                                    $"'{activity.place}' AS place, " +
+                                    $"'{activity.date}' AS time, " +
+                                    $"'{activity.img}' AS img, " +
+                                    $"'{activity.url}' AS path, " +
+                                    $"'{activity.description}' AS description, " +
+                                    $"{activity.active} AS active FROM DUAL " +
                             $"WHERE NOT EXISTS (SELECT * FROM activity " +
-                            $"WHERE 'title' = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.place}' AND time = '{activity.date}' AND img = '{activity.img}' AND path = '{activity.url}' AND description = '{activity.description}' AND active = {activity.active} LIMIT 1)";
+                            $"WHERE title = '{activity.title}' AND " +
+                                    $"host = '{activity.host}' AND " +
+                                    $"place = '{activity.place}' AND " +
+                                    $"time = '{activity.date}' AND " +
+                                    $"img = '{activity.img}' AND " +
+                                    $"path = '{activity.url}' AND " +
+                                    $"description = '{activity.description}' AND " +
+                                    $"active = {activity.active} LIMIT 1)";
 
             return query;
         }
@@ -430,7 +444,13 @@ namespace ActivityService.Classes
         private string GenerateAddTypeQuery(Activity activity)
         {
             string query = $"INSERT INTO type(activityid, tag) " +
-                               $"VALUES((SELECT activity.id FROM activity WHERE activity.title = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.place}' AND time = '{activity.date}' AND description = '{activity.description}' LIMIT 1), '{activity.type}');";
+                           $"VALUES((SELECT activity.id FROM activity " +
+                               $"WHERE title = '{activity.title}' AND " +
+                                        $"host = '{activity.host}' AND " +
+                                        $"place = '{activity.place}' AND " +
+                                        $"time = '{activity.date}' AND " +
+                                        $"description = '{activity.description}' LIMIT 1), " +
+                                $"'{activity.type}');";
 
             return query;
         }

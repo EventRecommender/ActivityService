@@ -3,28 +3,29 @@ using System.Reflection.PortableExecutable;
 using MySql.Data.MySqlClient;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Diagnostics;
 
 namespace ActivityService.Classes
 {
-    public class Database
+    public class DatabaseHandler
     {
-        public Database()
+        public DatabaseHandler()
         {
 
         }
 
         string connectionString = @"server=activity_database;userid=root;password=super;database=activity_db";
 
-        //Adds an activity to the database
+        /// <summary>
+        /// Adds an activity and its type tags to the database.
+        /// </summary>
+        /// <param name="activity">An object of the Activity class which is to be added to the database.</param>
+        /// <exception cref="InvalidOperationException">Thrown when a method call is invalid for the object's current state.</exception>
+        /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
         public void AddActivity(Activity activity)
         {
-            string query = $"INSERT INTO activity (title, host, place, time, img, path, description, active) " +
-                           $"SELECT '{activity.title}' AS title, '{activity.host}' AS host, '{activity.place}' AS place, '{activity.date}' AS time, '{activity.img}' AS img, '{activity.url}' AS path, '{activity.description}' AS description, {activity.active} AS active FROM DUAL " +
-                           $"WHERE NOT EXISTS (SELECT * FROM activity " +
-                           $"WHERE 'title' = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.place}' AND time = '{activity.date}' AND img = '{activity.img}' AND path = '{activity.url}' AND description = '{activity.description}' AND active = {activity.active} LIMIT 1)";
-
-            string typeQuery = $"INSERT INTO type(activityid, tag) " +
-                               $"VALUES((SELECT activity.id FROM activity WHERE activity.title = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.place}' AND time = '{activity.date}' AND description = '{activity.description}' LIMIT 1), '{activity.type}');";
+            string query = GenerateAddActivityQuery(activity);
+            string typeQuery = GenerateAddTypeQuery(activity);
 
             using MySqlConnection con = new MySqlConnection(connectionString);
             MySqlCommand command = new MySqlCommand(query, con);
@@ -60,8 +61,13 @@ namespace ActivityService.Classes
                 throw;
             }
         }
-        
-        //Retrieves all activities hosted in a specific city
+
+        /// <summary>
+        /// Retrieves all activities hosted in a specific city
+        /// </summary>
+        /// <param name="city">A string of the city from where activities should be retrieved.</param>
+        /// <exception cref="InvalidOperationException">Thrown when a method call is invalid for the object's current state.</exception>
+        /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
         public List<Activity> GetActivities(string city)
         {
             var query = $"SELECT * FROM activity WHERE place='{city}';";
@@ -102,7 +108,13 @@ namespace ActivityService.Classes
             }
         }
 
-        //Retrieves all activities hosted in a specific city within a given time period
+        /// <summary>
+        /// Retrieves all activities hosted in a specific city within a given time period.
+        /// </summary>
+        /// <param name="city">A string of the city from where activities should be retrieved.</param>
+        /// <param name="monthsForward">An integer telling how many months forward activities should be retrieved.</param>
+        /// <exception cref="InvalidOperationException">Thrown when a method call is invalid for the object's current state.</exception>
+        /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
         public List<Activity> GetActivities(string city, int monthsForward)
         {
             DateTime currentDate = DateTime.Now;
@@ -145,7 +157,12 @@ namespace ActivityService.Classes
             }
         }
 
-        //Retrieves specific activities by given ID's
+        /// <summary>
+        /// Retrieves specific activities by given ID's.
+        /// </summary>
+        /// <param name="listOfActivityID">An integer list of activity ID's.</param>
+        /// <exception cref="InvalidOperationException">Thrown when a method call is invalid for the object's current state.</exception>
+        /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
         public List<Activity> GetActivities(List<int> listOfActivityID)
         {
             string pref = "";
@@ -195,7 +212,12 @@ namespace ActivityService.Classes
             }
         }
 
-        //Retrieves activities containing specific tags
+        /// <summary>
+        /// Retrieves activities containing specific tags.
+        /// </summary>
+        /// <param name="listOfPreferences">A string list of the users preferences.</param>
+        /// <exception cref="InvalidOperationException">Thrown when a method call is invalid for the object's current state.</exception>
+        /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
         public List<Activity> GetActivitiesByPreference(List<string> listOfPreferences)
         {
             string pref = "";
@@ -244,7 +266,12 @@ namespace ActivityService.Classes
             }
         }
 
-        //Retrieves all activities created by a specific organization
+        /// <summary>
+        /// Retrieves all activities created by a specific organization.
+        /// </summary>
+        /// <param name="organizerId">An integer containing the user ID of the organization.</param>
+        /// <exception cref="InvalidOperationException">Thrown when a method call is invalid for the object's current state.</exception>
+        /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
         public List<Activity> GetUserActivities(int organizerId)
         {
             var query = $"SELECT * FROM activity WHERE host = {organizerId}";
@@ -286,7 +313,13 @@ namespace ActivityService.Classes
             }
         }
 
-        //Starts retrieval of new activities, using API calls
+        /// <summary>
+        /// Starts retrieval of new activities, using an API call to the event scraper.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Thrown when a method call is invalid for the object's current state.</exception>
+        /// <exception cref="HttpRequestException">Thrown when an error occurs when trying to send http requests.</exception>
+        /// <exception cref="TaskCanceledException"></exception>
+        /// <exception cref="ArgumentNullException">Thrown when an invalid URL is given to GetStringAsync().</exception>
         public async void UpdateActivities()
         {
             try
@@ -330,7 +363,12 @@ namespace ActivityService.Classes
             }
         }
 
-        //Removes activities from the database
+        /// <summary>
+        /// Removes activities from the database.
+        /// </summary>
+        /// <param name="listOfActivityID">An integer list of activity ID's.</param>
+        /// <exception cref="InvalidOperationException">Thrown when a method call is invalid for the object's current state.</exception>
+        /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
         public void RemoveActivities(List<int> listOfActivityID) 
         {
             var query = $"DELETE FROM activity WHERE id IN ('{listOfActivityID.First()}'";
@@ -369,6 +407,32 @@ namespace ActivityService.Classes
                 Console.Write("[DATABASE][/RemoveActivities] MySqlException. Failed to remove activities: \n" + e.Message);
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Generates a query which is used to add an activity to the database.
+        /// </summary>
+        /// <param name="activity">An object of the Activity class which is used to generate the query.</param>
+        private string GenerateAddActivityQuery(Activity activity)
+        {
+            string query =  $"INSERT INTO activity (title, host, place, time, img, path, description, active) " +
+                            $"SELECT '{activity.title}' AS title, '{activity.host}' AS host, '{activity.place}' AS place, '{activity.date}' AS time, '{activity.img}' AS img, '{activity.url}' AS path, '{activity.description}' AS description, {activity.active} AS active FROM DUAL " +
+                            $"WHERE NOT EXISTS (SELECT * FROM activity " +
+                            $"WHERE 'title' = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.place}' AND time = '{activity.date}' AND img = '{activity.img}' AND path = '{activity.url}' AND description = '{activity.description}' AND active = {activity.active} LIMIT 1)";
+
+            return query;
+        }
+
+        /// <summary>
+        /// Generates a query which is used to assign a type to an activity on the database.
+        /// </summary>
+        /// <param name="activity">An object of the Activity class which is used to generate the query.</param>
+        private string GenerateAddTypeQuery(Activity activity)
+        {
+            string query = $"INSERT INTO type(activityid, tag) " +
+                               $"VALUES((SELECT activity.id FROM activity WHERE activity.title = '{activity.title}' AND host = '{activity.host}' AND place = '{activity.place}' AND time = '{activity.date}' AND description = '{activity.description}' LIMIT 1), '{activity.type}');";
+
+            return query;
         }
     }
 }

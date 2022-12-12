@@ -1,10 +1,9 @@
 using ActivityService.Classes;
 using System.Text.Json;
-using MySql.Data.MySqlClient;
 
 
 var builder = WebApplication.CreateBuilder(args);
-Database db = new Database();
+DatabaseHandler dbHandler = new DatabaseHandler();
 
 // Add services to the container.
 
@@ -18,7 +17,7 @@ app.MapPost("/AddActivity", (string title, string host, string location, string 
     Activity act = new Activity(1, title, host, location, date, imageurl, url, description, true, type);
     try
     {
-        db.AddActivity(act);
+        dbHandler.AddActivity(act);
         return Results.Ok();
     }
     catch (Exception e)
@@ -31,22 +30,22 @@ app.MapPost("/AddActivity", (string title, string host, string location, string 
 app.MapGet("/GetActivities", (string function, string area, int monthsForward, string jsonActivityList) => 
 {
     List<Activity> activityList;
-    string json;
+    
     try
     {
         switch (function)
         {
             case "area":
-                activityList = db.GetActivities(area);
+                activityList = dbHandler.GetActivities(area);
                 return Results.Json(activityList);
             case "areaTime":
-                activityList = db.GetActivities(area, monthsForward);
+                activityList = dbHandler.GetActivities(area, monthsForward);
                 return Results.Json(activityList);
             case "activity":
                 if (jsonActivityList != null)
                 {
                     var listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
-                    activityList = db.GetActivities(listOfActivityID!);
+                    activityList = dbHandler.GetActivities(listOfActivityID!);
                     return Results.Json(activityList);
                 }
                 else
@@ -84,7 +83,7 @@ app.MapGet("/GetActivitiesByPreference", (string jsonPreferenceList) =>
         var listOfPreferences = JsonSerializer.Deserialize<Dictionary<string,int>>(jsonPreferenceList);
         //TODO TEMP FIX
         List<string> listOfKeys = listOfPreferences.Keys.ToList();
-        List<Activity> activityList = db.GetActivitiesByPreference(listOfKeys!);
+        List<Activity> activityList = dbHandler.GetActivitiesByPreference(listOfKeys!);
         
         return Results.Json(activityList);
     } 
@@ -101,7 +100,7 @@ app.MapGet("/GetUserActivities", (int userID) =>
 {
     try
     {
-        List<Activity> activityList = db.GetUserActivities(userID);
+        List<Activity> activityList = dbHandler.GetUserActivities(userID);
         return Results.Json(activityList);
 
     }
@@ -117,7 +116,7 @@ app.MapPost("/UpdateActivities", () =>
 {
     try
     {
-        db.UpdateActivities();
+        dbHandler.UpdateActivities();
         return Results.Ok();
     }
     catch (Exception e)
@@ -132,7 +131,7 @@ app.MapDelete("/RemoveActivities", (string jsonActivityList) =>
     try
     {
         var listOfActivityID = JsonSerializer.Deserialize<List<int>>(jsonActivityList);
-        db.RemoveActivities(listOfActivityID!);
+        dbHandler.RemoveActivities(listOfActivityID!);
         return Results.Ok("Activities deleted");
     }
     catch

@@ -273,7 +273,7 @@ namespace ActivityService.Classes
             List<string> queryList = new List<string>();
             foreach (KeyValuePair<string, int> s in listOfPreferences)
             {
-                queryList.Add($"SELECT activityid FROM type WHERE tag = '{s.Key}' (LIMIT {s.Value})");
+                queryList.Add($"(SELECT activityid FROM type WHERE tag = '{s.Key}' LIMIT {s.Value})");
             }
             sb.Append(string.Join(" UNION ", queryList));
             sb.Append(";");

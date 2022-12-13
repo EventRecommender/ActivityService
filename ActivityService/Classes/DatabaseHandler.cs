@@ -165,6 +165,10 @@ namespace ActivityService.Classes
         /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
         public List<Activity> GetActivities(List<int> listOfActivityID)
         {
+            if (listOfActivityID.Count == 0)
+            {
+                return new List<Activity>();
+            }
             string pref = "";
             foreach (int i in listOfActivityID)
             {
@@ -220,6 +224,9 @@ namespace ActivityService.Classes
         /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
         public List<Activity> GetActivitiesByPreference(List<string> listOfPreferences)
         {
+            if (listOfPreferences.Count == 0){
+                return new List<Activity>();
+            }
             string pref = "";
             foreach (string s in listOfPreferences)
             {

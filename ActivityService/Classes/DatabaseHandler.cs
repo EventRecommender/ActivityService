@@ -272,9 +272,9 @@ namespace ActivityService.Classes
         /// <param name="organizerId">An integer containing the user ID of the organization.</param>
         /// <exception cref="InvalidOperationException">Thrown when a method call is invalid for the object's current state.</exception>
         /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
-        public List<Activity> GetUserActivities(int organizerId)
+        public List<Activity> GetUserActivities(string username)
         {
-            var query = $"SELECT * FROM activity WHERE host = {organizerId}";
+            var query = $"SELECT * FROM activity WHERE host = '{username}'";
             List<Activity> activities = new List<Activity>();
 
             using var con = new MySqlConnection(connectionString);

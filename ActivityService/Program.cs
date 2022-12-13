@@ -96,11 +96,11 @@ app.MapGet("/GetActivitiesByPreference", (string jsonPreferenceList) =>
 });
 
 //Retrieves all activities organized by the given user.
-app.MapGet("/GetUserActivities", (int userID) =>
+app.MapGet("/GetUserActivities", (string username) =>
 {
     try
     {
-        List<Activity> activityList = dbHandler.GetUserActivities(userID);
+        List<Activity> activityList = dbHandler.GetUserActivities(username);
         return Results.Json(activityList);
 
     }

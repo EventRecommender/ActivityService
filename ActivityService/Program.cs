@@ -81,9 +81,7 @@ app.MapGet("/GetActivitiesByPreference", (string jsonPreferenceList) =>
     try
     {
         var listOfPreferences = JsonSerializer.Deserialize<Dictionary<string,int>>(jsonPreferenceList);
-        //TODO TEMP FIX
-        List<string> listOfKeys = listOfPreferences.Keys.ToList();
-        List<Activity> activityList = dbHandler.GetActivitiesByPreference(listOfKeys!);
+        List<Activity> activityList = dbHandler.GetActivitiesByPreference(listOfPreferences!);
         
         return Results.Json(activityList);
     } 

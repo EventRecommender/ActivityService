@@ -4,6 +4,8 @@ using MySql.Data.MySqlClient;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Diagnostics;
+using System.Globalization;
+using System.Text;
 
 namespace ActivityService.Classes
 {
@@ -227,17 +229,19 @@ namespace ActivityService.Classes
         /// <returns>A list of all activities that contain at least one of the tags given as input.</returns>
         /// <exception cref="InvalidOperationException">Thrown when a method call is invalid for the object's current state.</exception>
         /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
-        public List<Activity> GetActivitiesByPreference(List<string> listOfPreferences)
+        public List<Activity> GetActivitiesByPreference(Dictionary<string, int> listOfPreferences)
         {
-            string pref = "";
-            foreach (string s in listOfPreferences)
+            //Create SQL string for inserting into db
+            StringBuilder sb = new StringBuilder();
+            List<string> queryList = new List<string>();
+            foreach (KeyValuePair<string, int> s in listOfPreferences)
             {
-                pref += "'" + s.ToLower() + "',";
+                queryList.Add($"SELECT activityid FROM type WHERE tag = '{s.Key}' (LIMIT {s.Value})");
             }
-            pref = pref.Remove(pref.Length -1,1);
+            sb.Append(string.Join(" UNION ", queryList));
+            sb.Append(";");
 
-            var query = $"SELECT activityid FROM type WHERE tag IN ({pref})";
-            var sb = new System.Text.StringBuilder();
+            string query = sb.ToString();
 
             MySqlConnection connection = new MySqlConnection(connectionString);
             MySqlCommand command = new MySqlCommand(query, connection);

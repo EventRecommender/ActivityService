@@ -175,6 +175,10 @@ namespace ActivityService.Classes
         /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
         public List<Activity> GetActivities(List<int> listOfActivityID)
         {
+            if (listOfActivityID.Count == 0)
+            {
+                return new List<Activity>();
+            }
             string pref = "";
             foreach (int i in listOfActivityID)
             {

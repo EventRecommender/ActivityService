@@ -23,6 +23,27 @@ namespace ActivityService.Classes
             connectionString = _connectionString;
         }
 
+        private List<Activity> GetTypes(List<Activity> activities, MySqlConnection connection)
+        {
+            //Add type
+            foreach (Activity activity in activities)
+            {
+                string query = $"SELECT * FROM type WHERE activityid = {activity.id}";
+                using var command2 = new MySqlCommand(query, connection);
+                using MySqlDataReader reader2 = command2.ExecuteReader();
+
+                if (reader2.Read())
+                {
+                    activity.type = reader2.GetString(1);
+                }
+
+                reader2.Close();
+                command2.Dispose();
+            }
+
+            return activities;
+        }
+
 
         /// <summary>
         /// Adds an activity and its type tags to the database.
@@ -42,11 +63,13 @@ namespace ActivityService.Classes
             try
             {
                 connection.Open();
+
                 var tr = connection.BeginTransaction();
                 command.ExecuteNonQuery();
                 typeCommand.ExecuteNonQuery();
                 command.Dispose();
                 typeCommand.Dispose();
+
                 tr.Commit();
                 connection.Close();
             }
@@ -98,7 +121,11 @@ namespace ActivityService.Classes
 
                 reader.Close();
                 command.Dispose();
+
+                activities = GetTypes(activities, connection);
+
                 connection.Close();
+
                 return activities;
             }
             catch (InvalidOperationException e)
@@ -148,6 +175,9 @@ namespace ActivityService.Classes
 
                 reader.Close();
                 command.Dispose();
+
+                activities = GetTypes(activities, connection);
+
                 connection.Close();
                 return activities;
             }
@@ -208,6 +238,9 @@ namespace ActivityService.Classes
 
                 reader.Close();
                 command.Dispose();
+
+                activities = GetTypes(activities, connection);
+
                 connection.Close();
                 return activities;
             }
@@ -241,7 +274,7 @@ namespace ActivityService.Classes
             List<string> queryList = new List<string>();
             foreach (KeyValuePair<string, int> s in listOfPreferences)
             {
-                queryList.Add($"SELECT activityid FROM type WHERE tag = '{s.Key}' LIMIT {s.Value}");
+                queryList.Add($"(SELECT activityid FROM type WHERE tag = '{s.Key}' LIMIT {s.Value})");
             }
             sb.Append(string.Join(" UNION ", queryList));
             sb.Append(";");
@@ -313,7 +346,11 @@ namespace ActivityService.Classes
 
                 reader.Close();
                 command.Dispose();
+
+                activities = GetTypes(activities, connection);
+
                 connection.Close();
+
                 return activities;
             }
             catch (InvalidOperationException e)

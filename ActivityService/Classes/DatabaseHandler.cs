@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Data;
 
 namespace ActivityService.Classes
 {
@@ -240,7 +241,7 @@ namespace ActivityService.Classes
             List<string> queryList = new List<string>();
             foreach (KeyValuePair<string, int> s in listOfPreferences)
             {
-                queryList.Add($"SELECT activityid FROM type WHERE tag = '{s.Key}' (LIMIT {s.Value})");
+                queryList.Add($"SELECT activityid FROM type WHERE tag = '{s.Key}' LIMIT {s.Value}");
             }
             sb.Append(string.Join(" UNION ", queryList));
             sb.Append(";");
@@ -473,6 +474,31 @@ namespace ActivityService.Classes
                                 $"'{activity.type.ToLower()}');";
 
             return query;
+        }
+
+        /// <summary>
+        /// ONLY USE FOR TESTING. DO NOT USE IN PRODUCTION
+        /// Clears the entire database.
+        /// </summary>
+        public void ClearDatabase()
+        {
+            MySqlConnection connection = new(connectionString);
+            connection.Open();
+            string SQLstatement = "DELETE FROM activity;";
+
+            //Execute SQL
+            MySqlCommand command = new MySqlCommand(SQLstatement, connection);
+            MySqlDataAdapter adapter = new MySqlDataAdapter();
+
+
+            command.CommandType = CommandType.Text;
+            adapter.InsertCommand = command;
+            adapter.InsertCommand.ExecuteNonQuery();
+
+            command.Dispose();
+            adapter.Dispose();
+
+            connection.Close();
         }
     }
 }

@@ -267,23 +267,30 @@ namespace ActivityService.Classes
         /// <returns>A list of all activities that contain at least one of the tags given as input.</returns>
         /// <exception cref="InvalidOperationException">Thrown when a method call is invalid for the object's current state.</exception>
         /// <exception cref="MySqlException">Thrown whenever MySQL returns an error.</exception>
-        public List<Activity> GetActivitiesByPreference(Dictionary<string, int> listOfPreferences)
+        public List<Activity> GetActivitiesByPreference(Dictionary<string, int> preferenceDictionary)
         {
+            
             //Create SQL string for inserting into db
             StringBuilder sb = new StringBuilder();
             List<string> queryList = new List<string>();
-            foreach (KeyValuePair<string, int> s in listOfPreferences)
+            if (preferenceDictionary.Count != 0)
             {
-                queryList.Add($"(SELECT activityid FROM type WHERE tag = '{s.Key}' LIMIT {s.Value})");
+                foreach (KeyValuePair<string, int> s in preferenceDictionary)
+                {
+                    queryList.Add($"(SELECT activityid FROM type WHERE tag = '{s.Key}' LIMIT {s.Value})");
+                }
+                sb.Append(string.Join(" UNION ", queryList));
+                sb.Append(";");
             }
-            sb.Append(string.Join(" UNION ", queryList));
-            sb.Append(";");
-
+            else
+            {
+                return new List<Activity>();
+            }
             string query = sb.ToString();
 
             MySqlConnection connection = new MySqlConnection(connectionString);
             MySqlCommand command = new MySqlCommand(query, connection);
-
+            
             try
             {
                 connection.Open();

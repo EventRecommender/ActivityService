@@ -81,6 +81,10 @@ app.MapGet("/GetActivitiesByPreference", (string jsonPreferenceList) =>
     try
     {
         var listOfPreferences = JsonSerializer.Deserialize<Dictionary<string,int>>(jsonPreferenceList);
+        if (listOfPreferences.Count == 0)
+        {
+            return Results.BadRequest("[/GetActivitiesByPreference] Input was empty!");
+        }
         List<Activity> activityList = dbHandler.GetActivitiesByPreference(listOfPreferences!);
         
         return Results.Json(activityList);

@@ -290,12 +290,13 @@ namespace ActivityService.Classes
 
             MySqlConnection connection = new MySqlConnection(connectionString);
             MySqlCommand command = new MySqlCommand(query, connection);
-            
+
+            connection.Open();
+
+            MySqlDataReader reader = command.ExecuteReader();
+
             try
             {
-                connection.Open();
-
-                using MySqlDataReader reader = command.ExecuteReader();
 
                 List<int> activityList = new List<int>();
                 while (reader.Read())
@@ -310,6 +311,7 @@ namespace ActivityService.Classes
             }
             catch (InvalidOperationException e)
             {
+                reader.Close();
                 command.Dispose();
                 connection.Close();
                 Console.Write("[DATABASE][/GetActivitiesByPreference] InvalidOperationException. Failed to get activities: \n" + e.Message);
@@ -317,6 +319,7 @@ namespace ActivityService.Classes
             }
             catch (MySqlException e)
             {
+                reader.Close();
                 command.Dispose();
                 connection.Close();
                 Console.Write("[DATABASE][/GetActivitiesByPreference] MySqlException. Failed to get activities: \n" + e.Message);

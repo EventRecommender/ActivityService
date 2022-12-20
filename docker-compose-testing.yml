@@ -1,0 +1,13 @@
+﻿version: '3'
+services:
+  mysql:
+    image: mysql
+    container_name: activity_database
+    environment:
+      MYSQL_ROOT_PASSWORD: super
+      MYSQL_DATABASE: activity_db
+    volumes:
+      - ./mysql_db_data:/var/lib/mysql
+      - ./entry:/docker-entrypoint-initdb.d/ 
+    ports:
+      - 3306:3306
